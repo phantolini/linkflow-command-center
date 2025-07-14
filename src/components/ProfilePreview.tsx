@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -63,12 +62,13 @@ export const ProfilePreview = ({ profile }: { profile: Profile }) => {
   };
 
   const handleLinkClick = async (link: Link) => {
-    // Track click - the trigger will automatically populate profile_id
+    // Track click - provide profile_id explicitly to satisfy TypeScript
     try {
       await supabase
         .from('link_clicks')
         .insert({
           link_id: link.id,
+          profile_id: link.profile_id,
           clicked_at: new Date().toISOString()
         });
     } catch (error) {
