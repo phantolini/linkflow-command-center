@@ -60,22 +60,49 @@ export const AuthPage = () => {
 
   const handleGoogleAuth = async () => {
     setLoading(true);
+    
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      console.log('Starting Google OAuth...');
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`
+          redirectTo: `${window.location.origin}/`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         }
       });
 
-      if (error) throw error;
+      console.log('Google OAuth response:', { data, error });
+
+      if (error) {
+        console.error('Google OAuth error:', error);
+        throw error;
+      }
+
+      // The redirect will happen automatically, so we don't need to do anything else here
     } catch (error: any) {
+      console.error('Google auth error:', error);
+      
+      let errorMessage = error.message;
+      
+      // Provide more specific error messages
+      if (error.message?.includes('Invalid login credentials')) {
+        errorMessage = 'Google sign-in failed. Please try again.';
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = 'Please confirm your email address first.';
+      } else if (error.message?.includes('OAuth')) {
+        errorMessage = 'Google authentication is not properly configured. Please contact support.';
+      }
+      
       toast({
         title: "Google Sign-In Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
-    } finally {
+      
       setLoading(false);
     }
   };
@@ -168,8 +195,8 @@ export const AuthPage = () => {
                 <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
               <span className="flex items-center justify-center gap-2">
-                Continue with Google
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                {loading ? "Connecting..." : "Continue with Google"}
+                {!loading && <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />}
               </span>
             </Button>
 
