@@ -127,7 +127,7 @@ export const Dashboard = ({ user }: { user: User }) => {
               </div>
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                  LinkFlow
+                  SAWD LINK
                 </h1>
                 <p className="text-xs text-slate-400">
                   {profile?.username && `@${profile.username}`}

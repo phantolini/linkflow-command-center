@@ -1,45 +1,16 @@
 
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
 import { Command, Zap, Shield, BarChart3, Smartphone, ExternalLink } from "lucide-react";
+import { AuthPage } from "@/components/AuthPage";
 
 export const LandingPage = () => {
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+  const [showAuth, setShowAuth] = useState(false);
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Check your email!",
-        description: "We sent you a magic link to sign in.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (showAuth) {
+    return <AuthPage />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -52,9 +23,16 @@ export const LandingPage = () => {
                 <Command className="h-4 w-4 text-white" />
               </div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                LinkFlow
+                SAWD LINK
               </h1>
             </div>
+            <Button
+              onClick={() => setShowAuth(true)}
+              variant="outline"
+              className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+            >
+              Sign In
+            </Button>
           </div>
         </div>
       </header>
@@ -84,25 +62,14 @@ export const LandingPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <Input
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
-                />
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 transition-all duration-300"
-                >
-                  {loading ? "Sending Magic Link..." : "Send Magic Link"}
-                </Button>
-              </form>
+              <Button
+                onClick={() => setShowAuth(true)}
+                className="w-full bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 transition-all duration-300"
+              >
+                Get Started Free
+              </Button>
               <p className="text-xs text-slate-400 text-center mt-4">
-                No password required. We'll send you a secure link to sign in.
+                No credit card required. Create your page in minutes.
               </p>
             </CardContent>
           </Card>
@@ -153,10 +120,10 @@ export const LandingPage = () => {
               <div className="w-6 h-6 bg-gradient-to-br from-cyan-400 to-purple-600 rounded-lg flex items-center justify-center">
                 <Command className="h-3 w-3 text-white" />
               </div>
-              <span className="text-slate-300 font-medium">LinkFlow</span>
+              <span className="text-slate-300 font-medium">SAWD LINK</span>
             </div>
             <p className="text-slate-400 text-sm">
-              © 2024 LinkFlow. Built for creators, by creators.
+              © 2024 SAWD LINK. Built for creators, by creators.
             </p>
           </div>
         </div>
