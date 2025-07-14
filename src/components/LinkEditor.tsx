@@ -4,12 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, GripVertical, ExternalLink, Trash2, Save, Check } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Plus, GripVertical, ExternalLink, Trash2, Save } from "lucide-react";
+import { ProfileSettings } from "./ProfileSettings";
 
 interface Profile {
   id: string;
@@ -39,31 +37,19 @@ interface Link {
 
 export const LinkEditor = ({ 
   profile, 
-  onProfileUpdate 
+  onProfileUpdate,
+  userId
 }: { 
   profile: Profile; 
   onProfileUpdate: (profile: Profile) => void;
+  userId: string;
 }) => {
   const [links, setLinks] = useState<Link[]>([]);
-  const [editingProfile, setEditingProfile] = useState(profile);
-  const [isAutosaving, setIsAutosaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     loadLinks();
   }, [profile.id]);
-
-  useEffect(() => {
-    // Autosave profile changes with debounce
-    const timeoutId = setTimeout(() => {
-      if (JSON.stringify(editingProfile) !== JSON.stringify(profile)) {
-        saveProfile();
-      }
-    }, 1000);
-
-    return () => clearTimeout(timeoutId);
-  }, [editingProfile]);
 
   const loadLinks = async () => {
     try {
@@ -81,38 +67,6 @@ export const LinkEditor = ({
         description: error.message,
         variant: "destructive",
       });
-    }
-  };
-
-  const saveProfile = async () => {
-    setIsAutosaving(true);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({
-          username: editingProfile.username,
-          display_name: editingProfile.display_name,
-          bio: editingProfile.bio,
-          theme: editingProfile.theme,
-          is_public: editingProfile.is_public,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', profile.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      onProfileUpdate(data);
-      setLastSaved(new Date());
-    } catch (error: any) {
-      toast({
-        title: "Error saving profile",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsAutosaving(false);
     }
   };
 
@@ -186,103 +140,27 @@ export const LinkEditor = ({
     }
   };
 
-  const handleProfileChange = (field: keyof Profile, value: any) => {
-    setEditingProfile(prev => ({ ...prev, [field]: value }));
-  };
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Profile Settings */}
       <div className="lg:col-span-1">
-        <Card className="bg-black/40 border-slate-700/50 backdrop-blur-md">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-white flex items-center gap-2">
-                Profile Settings
-              </CardTitle>
-              <div className="flex items-center gap-2 text-xs">
-                {isAutosaving ? (
-                  <div className="flex items-center gap-1 text-cyan-400">
-                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                    Saving...
-                  </div>
-                ) : lastSaved ? (
-                  <div className="flex items-center gap-1 text-green-400">
-                    <Check className="w-3 h-3" />
-                    Saved
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-slate-300">Username</Label>
-              <Input
-                value={editingProfile.username}
-                onChange={(e) => handleProfileChange('username', e.target.value)}
-                className="bg-slate-800/50 border-slate-600 text-white"
-                placeholder="your-username"
-              />
-              <p className="text-xs text-slate-400">
-                Your public URL: /{editingProfile.username}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-slate-300">Display Name</Label>
-              <Input
-                value={editingProfile.display_name}
-                onChange={(e) => handleProfileChange('display_name', e.target.value)}
-                className="bg-slate-800/50 border-slate-600 text-white"
-                placeholder="Your Name"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-slate-300">Bio</Label>
-              <Textarea
-                value={editingProfile.bio || ''}
-                onChange={(e) => handleProfileChange('bio', e.target.value)}
-                className="bg-slate-800/50 border-slate-600 text-white resize-none"
-                placeholder="Tell the world about yourself..."
-                rows={3}
-              />
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-lg border border-slate-700/50">
-              <div>
-                <Label className="text-slate-300">Public Profile</Label>
-                <p className="text-xs text-slate-400">Make your profile visible to everyone</p>
-              </div>
-              <Switch
-                checked={editingProfile.is_public}
-                onCheckedChange={(checked) => handleProfileChange('is_public', checked)}
-              />
-            </div>
-
-            {editingProfile.is_public && (
-              <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
-                <p className="text-sm text-cyan-300 font-medium">✨ Your profile is live!</p>
-                <p className="text-xs text-cyan-400">
-                  Share: /{editingProfile.username}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <ProfileSettings 
+          profile={profile}
+          onProfileUpdate={onProfileUpdate}
+          userId={userId}
+        />
       </div>
 
       {/* Links Management */}
       <div className="lg:col-span-2">
-        <Card className="bg-black/40 border-slate-700/50 backdrop-blur-md">
+        <Card className="bg-black/40 border-white/10 backdrop-blur-md">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-white">Links</CardTitle>
               <Button
                 onClick={addLink}
                 size="sm"
-                className="bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500"
+                className="bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 border border-white/10"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Link
@@ -292,14 +170,14 @@ export const LinkEditor = ({
           <CardContent>
             {links.length === 0 ? (
               <div className="text-center py-12">
-                <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <ExternalLink className="h-8 w-8 text-slate-400" />
+                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10">
+                  <ExternalLink className="h-8 w-8 text-white/60" />
                 </div>
                 <h3 className="text-lg font-medium text-white mb-2">No links yet</h3>
-                <p className="text-slate-400 mb-4">Add your first link to get started</p>
+                <p className="text-white/60 mb-4">Add your first link to get started</p>
                 <Button
                   onClick={addLink}
-                  className="bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500"
+                  className="bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 border border-white/10"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Your First Link
@@ -347,10 +225,10 @@ const LinkItem = ({
   };
 
   return (
-    <Card className="bg-slate-800/30 border-slate-600/50 hover:border-cyan-500/30 transition-all duration-200">
+    <Card className="bg-white/5 border-white/10 hover:border-cyan-400/30 transition-all duration-200 backdrop-blur-sm">
       <CardContent className="p-4">
         <div className="flex items-center gap-3">
-          <GripVertical className="h-4 w-4 text-slate-500 cursor-grab" />
+          <GripVertical className="h-4 w-4 text-white/40 cursor-grab" />
           
           <div className="flex-1">
             {isEditing ? (
@@ -358,27 +236,27 @@ const LinkItem = ({
                 <Input
                   value={editingLink.title}
                   onChange={(e) => setEditingLink(prev => ({ ...prev, title: e.target.value }))}
-                  className="bg-slate-700/50 border-slate-600 text-white"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-cyan-400/50 focus:ring-cyan-400/20"
                   placeholder="Link title"
                 />
                 <Input
                   value={editingLink.url}
                   onChange={(e) => setEditingLink(prev => ({ ...prev, url: e.target.value }))}
-                  className="bg-slate-700/50 border-slate-600 text-white"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-cyan-400/50 focus:ring-cyan-400/20"
                   placeholder="https://example.com"
                 />
                 <Input
                   value={editingLink.description || ''}
                   onChange={(e) => setEditingLink(prev => ({ ...prev, description: e.target.value }))}
-                  className="bg-slate-700/50 border-slate-600 text-white"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-cyan-400/50 focus:ring-cyan-400/20"
                   placeholder="Optional description"
                 />
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={handleSave} className="bg-green-600 hover:bg-green-700">
+                  <Button size="sm" onClick={handleSave} className="bg-green-600 hover:bg-green-700 border border-white/10">
                     <Save className="h-3 w-3 mr-1" />
                     Save
                   </Button>
-                  <Button size="sm" variant="outline" onClick={handleCancel}>
+                  <Button size="sm" variant="outline" onClick={handleCancel} className="border-white/20 text-white/80 hover:bg-white/10">
                     Cancel
                   </Button>
                 </div>
@@ -389,9 +267,9 @@ const LinkItem = ({
                   <h4 className="font-medium text-white hover:text-cyan-400 transition-colors">
                     {link.title}
                   </h4>
-                  <p className="text-sm text-slate-400 truncate">{link.url}</p>
+                  <p className="text-sm text-white/60 truncate">{link.url}</p>
                   {link.description && (
-                    <p className="text-xs text-slate-500 mt-1">{link.description}</p>
+                    <p className="text-xs text-white/50 mt-1">{link.description}</p>
                   )}
                 </div>
                 
@@ -404,7 +282,7 @@ const LinkItem = ({
                     size="sm"
                     variant="ghost"
                     onClick={() => onDelete(link.id)}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/20"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

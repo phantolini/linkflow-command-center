@@ -2,13 +2,13 @@
 import { useState, useEffect } from "react";
 import { User } from '@supabase/supabase-js';
 import { supabase } from "@/integrations/supabase/client";
+import { LinkEditor } from "./LinkEditor";
+import { ProfilePreview } from "./ProfilePreview";
+import { AnalyticsDashboard } from "./AnalyticsDashboard";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Plus, Eye, BarChart3, Settings, ExternalLink } from "lucide-react";
-import { LinkEditor } from "@/components/LinkEditor";
-import { ProfilePreview } from "@/components/ProfilePreview";
-import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
-import { SetupWizard } from "@/components/SetupWizard";
+import { LogOut, BarChart3, Edit, Eye } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -25,14 +25,12 @@ interface Profile {
 
 export const Dashboard = ({ user }: { user: User }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'analytics'>('editor');
   const [loading, setLoading] = useState(true);
-  const [showSetupWizard, setShowSetupWizard] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     loadProfile();
-  }, [user]);
+  }, [user.id]);
 
   const loadProfile = async () => {
     try {
@@ -40,21 +38,17 @@ export const Dashboard = ({ user }: { user: User }) => {
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
-        .maybeSingle();
+        .single();
 
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      if (data) {
-        setProfile(data);
-        // Show setup wizard if profile is not public yet
-        if (!data.is_public) {
-          setShowSetupWizard(true);
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No profile found, create one
+          await createProfile();
+        } else {
+          throw error;
         }
       } else {
-        // Create default profile and show setup wizard
-        await createDefaultProfile();
+        setProfile(data);
       }
     } catch (error: any) {
       toast({
@@ -67,17 +61,16 @@ export const Dashboard = ({ user }: { user: User }) => {
     }
   };
 
-  const createDefaultProfile = async () => {
+  const createProfile = async () => {
     try {
-      const username = user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`;
-      
+      const username = user.email?.split('@')[0] || 'user';
       const { data, error } = await supabase
         .from('profiles')
         .insert({
           user_id: user.id,
-          username,
-          display_name: username,
-          bio: 'Welcome to my link tree!',
+          username: username,
+          display_name: user.user_metadata?.full_name || username,
+          bio: '',
           theme: 'cyber',
           is_public: false
         })
@@ -86,7 +79,6 @@ export const Dashboard = ({ user }: { user: User }) => {
 
       if (error) throw error;
       setProfile(data);
-      setShowSetupWizard(true);
     } catch (error: any) {
       toast({
         title: "Error creating profile",
@@ -99,7 +91,7 @@ export const Dashboard = ({ user }: { user: User }) => {
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
-      window.location.reload();
+      window.location.href = '/';
     } catch (error: any) {
       toast({
         title: "Error signing out",
@@ -109,146 +101,102 @@ export const Dashboard = ({ user }: { user: User }) => {
     }
   };
 
-  const handleSetupComplete = (updatedProfile: Profile) => {
+  const handleProfileUpdate = (updatedProfile: Profile) => {
     setProfile(updatedProfile);
-    setShowSetupWizard(false);
-    toast({
-      title: "🎉 Profile Published!",
-      description: `Your profile is now live at /${updatedProfile.username}`,
-    });
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen animated-bg flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 mx-auto mb-4 animate-pulse floating-animation">
-            <img 
-              src="/lovable-uploads/69e7d46f-8144-4149-9a8d-cacef5727c53.png" 
-              alt="SAWD Logo" 
-              className="w-full h-full object-contain filter drop-shadow-lg"
-            />
-          </div>
-          <p className="text-slate-200 font-medium">Initializing command center...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
       </div>
     );
   }
 
-  if (showSetupWizard && profile) {
+  if (!profile) {
     return (
-      <div className="min-h-screen animated-bg p-4 flex items-center justify-center">
-        <SetupWizard profile={profile} onComplete={handleSetupComplete} />
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <h2 className="text-2xl font-bold mb-4">Profile Setup Required</h2>
+          <p className="text-white/60">There was an issue creating your profile. Please try refreshing the page.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen animated-bg relative overflow-hidden">
-      {/* Floating background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 right-20 w-64 h-64 bg-gradient-to-r from-cyan-400/5 to-blue-500/5 rounded-full blur-3xl floating-animation"></div>
-        <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-purple-400/5 to-pink-500/5 rounded-full blur-3xl floating-animation" style={{ animationDelay: '-5s' }}></div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -inset-10 opacity-30">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-cyan-400/20 to-blue-500/20 rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
+          <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-gradient-to-r from-purple-400/20 to-pink-500/20 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
+          <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-gradient-to-r from-yellow-400/20 to-red-500/20 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000"></div>
+        </div>
       </div>
 
-      {/* Header */}
-      <header className="glass border-b border-white/10 sticky top-0 z-50 backdrop-blur-xl">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+      <div className="relative z-10">
+        {/* Header */}
+        <header className="border-b border-white/10 backdrop-blur-md bg-black/20">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 relative">
-                <img 
-                  src="/lovable-uploads/69e7d46f-8144-4149-9a8d-cacef5727c53.png" 
-                  alt="SAWD Logo" 
-                  className="w-full h-full object-contain filter drop-shadow-lg"
-                />
-              </div>
+              <img 
+                src="/lovable-uploads/69e7d46f-8144-4149-9a8d-cacef5727c53.png" 
+                alt="SAWD LINK" 
+                className="h-8 w-auto"
+              />
               <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-                  SAWD LINK
-                </h1>
-                <p className="text-xs text-slate-400">
-                  {profile?.username && `@${profile.username}`}
-                </p>
+                <h1 className="text-xl font-bold text-white">SAWD LINK</h1>
+                <p className="text-sm text-white/60">Welcome back, {profile.display_name}</p>
               </div>
             </div>
-
-            <div className="flex items-center gap-2">
-              {profile?.is_public && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="btn-glass border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
-                  onClick={() => window.open(`/${profile.username}`, '_blank')}
-                >
-                  <ExternalLink className="h-4 w-4 mr-1" />
-                  View Live
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowSetupWizard(true)}
-                className="btn-glass border-white/20 text-slate-300 hover:bg-white/10"
-              >
-                <Settings className="h-4 w-4 mr-1" />
-                Setup
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSignOut}
-                className="btn-glass border-white/20 text-slate-300 hover:bg-white/10"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button
+              onClick={handleSignOut}
+              variant="outline"
+              className="border-white/20 text-white/80 hover:bg-white/10 hover:border-white/30"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
           </div>
+        </header>
 
-          {/* Navigation Tabs */}
-          <nav className="flex gap-2 mt-6">
-            {[
-              { id: 'editor', label: 'Editor', icon: Settings },
-              { id: 'preview', label: 'Preview', icon: Eye },
-              { id: 'analytics', label: 'Analytics', icon: BarChart3 }
-            ].map((tab) => (
-              <Button
-                key={tab.id}
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`
-                  ${activeTab === tab.id 
-                    ? 'btn-glass-primary border-cyan-500/50 text-cyan-400' 
-                    : 'btn-glass text-slate-400 hover:text-slate-200'
-                  }
-                  transition-all duration-300 hover:scale-105
-                `}
-              >
-                <tab.icon className="h-4 w-4 mr-2" />
-                {tab.label}
-              </Button>
-            ))}
-          </nav>
-        </div>
-      </header>
+        {/* Main Content */}
+        <div className="container mx-auto px-4 py-8">
+          <Tabs defaultValue="editor" className="space-y-6">
+            <TabsList className="bg-black/40 border border-white/10 backdrop-blur-md">
+              <TabsTrigger value="editor" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/60">
+                <Edit className="h-4 w-4 mr-2" />
+                Editor
+              </TabsTrigger>
+              <TabsTrigger value="preview" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/60">
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/60">
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Analytics
+              </TabsTrigger>
+            </TabsList>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 relative z-10">
-        {profile && (
-          <>
-            {activeTab === 'editor' && (
-              <LinkEditor profile={profile} onProfileUpdate={setProfile} />
-            )}
-            {activeTab === 'preview' && (
+            <TabsContent value="editor">
+              <LinkEditor 
+                profile={profile} 
+                onProfileUpdate={handleProfileUpdate}
+                userId={user.id}
+              />
+            </TabsContent>
+
+            <TabsContent value="preview">
               <ProfilePreview profile={profile} />
-            )}
-            {activeTab === 'analytics' && (
-              <AnalyticsDashboard profile={profile} />
-            )}
-          </>
-        )}
-      </main>
+            </TabsContent>
+
+            <TabsContent value="analytics">
+              <AnalyticsDashboard profileId={profile.id} />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
     </div>
   );
 };
