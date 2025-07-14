@@ -8,6 +8,7 @@ import { LogOut, Plus, Eye, BarChart3, Settings, ExternalLink } from "lucide-rea
 import { LinkEditor } from "@/components/LinkEditor";
 import { ProfilePreview } from "@/components/ProfilePreview";
 import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
+import { SetupWizard } from "@/components/SetupWizard";
 
 interface Profile {
   id: string;
@@ -26,6 +27,7 @@ export const Dashboard = ({ user }: { user: User }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'analytics'>('editor');
   const [loading, setLoading] = useState(true);
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -46,8 +48,12 @@ export const Dashboard = ({ user }: { user: User }) => {
 
       if (data) {
         setProfile(data);
+        // Show setup wizard if profile is not public yet
+        if (!data.is_public) {
+          setShowSetupWizard(true);
+        }
       } else {
-        // Create default profile
+        // Create default profile and show setup wizard
         await createDefaultProfile();
       }
     } catch (error: any) {
@@ -80,6 +86,7 @@ export const Dashboard = ({ user }: { user: User }) => {
 
       if (error) throw error;
       setProfile(data);
+      setShowSetupWizard(true);
     } catch (error: any) {
       toast({
         title: "Error creating profile",
@@ -102,19 +109,36 @@ export const Dashboard = ({ user }: { user: User }) => {
     }
   };
 
+  const handleSetupComplete = (updatedProfile: Profile) => {
+    setProfile(updatedProfile);
+    setShowSetupWizard(false);
+    toast({
+      title: "🎉 Profile Published!",
+      description: `Your profile is now live at /${updatedProfile.username}`,
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen animated-bg flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 mx-auto mb-4 animate-pulse floating-animation">
             <img 
-              src="/lovable-uploads/d260a0ec-5de2-4c2b-bfee-56c85b40e602.png" 
+              src="/lovable-uploads/69e7d46f-8144-4149-9a8d-cacef5727c53.png" 
               alt="SAWD Logo" 
               className="w-full h-full object-contain filter drop-shadow-lg"
             />
           </div>
-          <p className="text-slate-300">Initializing command center...</p>
+          <p className="text-slate-200 font-medium">Initializing command center...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (showSetupWizard && profile) {
+    return (
+      <div className="min-h-screen animated-bg p-4 flex items-center justify-center">
+        <SetupWizard profile={profile} onComplete={handleSetupComplete} />
       </div>
     );
   }
@@ -134,7 +158,7 @@ export const Dashboard = ({ user }: { user: User }) => {
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 relative">
                 <img 
-                  src="/lovable-uploads/d260a0ec-5de2-4c2b-bfee-56c85b40e602.png" 
+                  src="/lovable-uploads/69e7d46f-8144-4149-9a8d-cacef5727c53.png" 
                   alt="SAWD Logo" 
                   className="w-full h-full object-contain filter drop-shadow-lg"
                 />
@@ -161,6 +185,15 @@ export const Dashboard = ({ user }: { user: User }) => {
                   View Live
                 </Button>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSetupWizard(true)}
+                className="btn-glass border-white/20 text-slate-300 hover:bg-white/10"
+              >
+                <Settings className="h-4 w-4 mr-1" />
+                Setup
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
