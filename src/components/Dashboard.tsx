@@ -192,7 +192,7 @@ export const Dashboard = ({ user }: { user: User }) => {
             </TabsContent>
 
             <TabsContent value="analytics">
-              <AnalyticsDashboard profileId={profile.id} />
+              <AnalyticsDashboard profile={profile} />
             </TabsContent>
           </Tabs>
         </div>
