@@ -59,13 +59,7 @@ export const AnalyticsDashboard = ({ profile }: { profile: Profile }) => {
       // Get links with click counts
       const { data: linksData, error: linksError } = await supabase
         .from('links')
-        .select(`
-          id,
-          title,
-          url,
-          is_active,
-          link_clicks(count)
-        `)
+        .select('*')
         .eq('profile_id', profile.id)
         .order('position', { ascending: true });
 
@@ -75,17 +69,22 @@ export const AnalyticsDashboard = ({ profile }: { profile: Profile }) => {
       const { data: clicksData, error: clicksError } = await supabase
         .from('link_clicks')
         .select('*')
-        .in('link_id', (linksData || []).map(l => l.id));
+        .eq('profile_id', profile.id);
 
       if (clicksError) throw clicksError;
 
       // Process data
+      const linkClickCounts = clicksData?.reduce((acc: any, click: any) => {
+        acc[click.link_id] = (acc[click.link_id] || 0) + 1;
+        return acc;
+      }, {}) || {};
+
       const topLinks: LinkAnalytics[] = (linksData || []).map(link => ({
         id: link.id,
         title: link.title,
         url: link.url,
         is_active: link.is_active,
-        clicks: Array.isArray(link.link_clicks) ? link.link_clicks.length : 0
+        clicks: linkClickCounts[link.id] || 0
       })).sort((a, b) => b.clicks - a.clicks);
 
       setAnalytics({

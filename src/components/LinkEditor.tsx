@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, GripVertical, ExternalLink, Trash2, Save, Upload, Check } from "lucide-react";
+import { Plus, GripVertical, ExternalLink, Trash2, Save, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Profile {
@@ -33,8 +33,8 @@ interface Link {
   icon: string | null;
   position: number;
   is_active: boolean;
-  clicks: number;
   created_at: string;
+  updated_at: string;
 }
 
 export const LinkEditor = ({ 
@@ -242,7 +242,7 @@ export const LinkEditor = ({
             <div className="space-y-2">
               <Label className="text-slate-300">Bio</Label>
               <Textarea
-                value={editingProfile.bio}
+                value={editingProfile.bio || ''}
                 onChange={(e) => handleProfileChange('bio', e.target.value)}
                 className="bg-slate-800/50 border-slate-600 text-white resize-none"
                 placeholder="Tell the world about yourself..."
@@ -396,13 +396,9 @@ const LinkItem = ({
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs">
-                    {link.clicks} clicks
-                  </Badge>
                   <Switch
                     checked={link.is_active}
                     onCheckedChange={(checked) => onUpdate(link.id, { is_active: checked })}
-                    size="sm"
                   />
                   <Button
                     size="sm"

@@ -29,8 +29,8 @@ interface Link {
   icon: string | null;
   position: number;
   is_active: boolean;
-  clicks: number;
   created_at: string;
+  updated_at: string;
 }
 
 export const ProfilePreview = ({ profile }: { profile: Profile }) => {
@@ -95,7 +95,7 @@ export const ProfilePreview = ({ profile }: { profile: Profile }) => {
       try {
         await navigator.share({
           title: `${profile.display_name} - LinkFlow`,
-          text: profile.bio,
+          text: profile.bio || '',
           url: url,
         });
       } catch (error) {
