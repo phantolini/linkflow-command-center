@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { User } from '@supabase/supabase-js';
 import { supabase } from "@/integrations/supabase/client";
@@ -107,15 +106,15 @@ export const Dashboard = ({ user }: { user: User }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-black flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-fuchsia-400"></div>
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-black flex items-center justify-center">
         <div className="text-white text-center">
           <h2 className="text-2xl font-bold mb-4">Profile Setup Required</h2>
           <p className="text-white/60">There was an issue creating your profile. Please try refreshing the page.</p>
@@ -125,14 +124,13 @@ export const Dashboard = ({ user }: { user: User }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -inset-10 opacity-30">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-cyan-400/20 to-blue-500/20 rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
-          <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-gradient-to-r from-purple-400/20 to-pink-500/20 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
-          <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-gradient-to-r from-yellow-400/20 to-red-500/20 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000"></div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-black relative overflow-hidden">
+      {/* Animated fluid blob backgrounds */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-fuchsia-400/20 to-pink-500/20 rounded-full mix-blend-multiply filter blur-xl blob-animation"></div>
+        <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-gradient-to-r from-purple-400/20 to-fuchsia-500/20 rounded-full mix-blend-multiply filter blur-xl blob-animation-delayed"></div>
+        <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-gradient-to-r from-pink-400/20 to-purple-500/20 rounded-full mix-blend-multiply filter blur-xl blob-animation-delayed-2"></div>
+        <div className="absolute top-1/2 right-1/3 w-72 h-72 bg-gradient-to-r from-fuchsia-300/15 to-pink-400/15 rounded-full filter blur-xl blob-animation"></div>
       </div>
 
       <div className="relative z-10">
@@ -146,14 +144,14 @@ export const Dashboard = ({ user }: { user: User }) => {
                 className="h-8 w-auto"
               />
               <div>
-                <h1 className="text-xl font-bold text-white">SAWD LINK</h1>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-fuchsia-400 to-pink-500 bg-clip-text text-transparent">SAWD LINK</h1>
                 <p className="text-sm text-white/60">Welcome back, {profile.display_name}</p>
               </div>
             </div>
             <Button
               onClick={handleSignOut}
               variant="outline"
-              className="border-white/20 text-white/80 hover:bg-white/10 hover:border-white/30"
+              className="border-white/20 text-white/80 hover:bg-white/10 hover:border-fuchsia-400/30"
             >
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out
@@ -165,16 +163,16 @@ export const Dashboard = ({ user }: { user: User }) => {
         <div className="container mx-auto px-4 py-8">
           <Tabs defaultValue="editor" className="space-y-6">
             <TabsList className="bg-black/40 border border-white/10 backdrop-blur-md">
-              <TabsTrigger value="editor" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/60">
-                <Edit className="h-4 w-4 mr-2" />
+              <TabsTrigger value="editor" className="data-[state=active]:bg-fuchsia-500/20 data-[state=active]:text-white text-white/60">
+                <Edit className="h-4 w-4 mr-2 text-fuchsia-400" />
                 Editor
               </TabsTrigger>
-              <TabsTrigger value="preview" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/60">
-                <Eye className="h-4 w-4 mr-2" />
+              <TabsTrigger value="preview" className="data-[state=active]:bg-fuchsia-500/20 data-[state=active]:text-white text-white/60">
+                <Eye className="h-4 w-4 mr-2 text-fuchsia-400" />
                 Preview
               </TabsTrigger>
-              <TabsTrigger value="analytics" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/60">
-                <BarChart3 className="h-4 w-4 mr-2" />
+              <TabsTrigger value="analytics" className="data-[state=active]:bg-fuchsia-500/20 data-[state=active]:text-white text-white/60">
+                <BarChart3 className="h-4 w-4 mr-2 text-fuchsia-400" />
                 Analytics
               </TabsTrigger>
             </TabsList>

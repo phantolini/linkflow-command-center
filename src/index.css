@@ -18,7 +18,7 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 300 100% 50%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -27,15 +27,15 @@ All colors MUST be HSL.
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 300 100% 50%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 300 100% 50%;
 
     --radius: 0.5rem;
 
@@ -46,7 +46,7 @@ All colors MUST be HSL.
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 300 100% 50%;
   }
 
   .dark {
@@ -59,7 +59,7 @@ All colors MUST be HSL.
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
+    --primary: 300 100% 50%;
     --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -68,7 +68,7 @@ All colors MUST be HSL.
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 300 100% 50%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
@@ -76,15 +76,15 @@ All colors MUST be HSL.
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 300 100% 50%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary: 300 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 300 100% 50%;
   }
 }
 
@@ -114,14 +114,14 @@ All colors MUST be HSL.
   
   .animated-bg {
     background: linear-gradient(-45deg, 
-      hsl(236, 72%, 79%), 
-      hsl(264, 69%, 74%), 
-      hsl(316, 90%, 77%), 
-      hsl(347, 77%, 63%), 
-      hsl(200, 98%, 63%), 
-      hsl(179, 100%, 50%), 
-      hsl(270, 100%, 25%), 
-      hsl(236, 72%, 79%)
+      hsl(300, 100%, 25%), 
+      hsl(280, 100%, 20%), 
+      hsl(320, 90%, 15%), 
+      hsl(340, 80%, 10%), 
+      hsl(260, 100%, 15%), 
+      hsl(300, 90%, 20%), 
+      hsl(320, 100%, 25%), 
+      hsl(280, 95%, 30%)
     );
     background-size: 400% 400%;
     animation: gradientShift 20s ease infinite;
@@ -129,12 +129,12 @@ All colors MUST be HSL.
   
   .animated-bg-subtle {
     background: linear-gradient(-45deg, 
-      hsla(236, 72%, 79%, 0.1), 
-      hsla(264, 69%, 74%, 0.1), 
-      hsla(316, 90%, 77%, 0.1), 
-      hsla(347, 77%, 63%, 0.1),
-      hsla(200, 98%, 63%, 0.1),
-      hsla(179, 100%, 50%, 0.1)
+      hsla(300, 100%, 50%, 0.1), 
+      hsla(280, 90%, 60%, 0.1), 
+      hsla(320, 80%, 55%, 0.1), 
+      hsla(340, 70%, 50%, 0.1),
+      hsla(260, 85%, 45%, 0.1),
+      hsla(300, 95%, 40%, 0.1)
     );
     background-size: 400% 400%;
     animation: gradientShift 25s ease infinite;
@@ -144,11 +144,25 @@ All colors MUST be HSL.
     animation: floating 6s ease-in-out infinite;
   }
   
+  .blob-animation {
+    animation: blob 7s ease-in-out infinite;
+  }
+  
+  .blob-animation-delayed {
+    animation: blob 7s ease-in-out infinite;
+    animation-delay: -2s;
+  }
+  
+  .blob-animation-delayed-2 {
+    animation: blob 7s ease-in-out infinite;
+    animation-delay: -4s;
+  }
+  
   .glow-effect {
     box-shadow: 
-      0 0 20px hsla(200, 98%, 63%, 0.3), 
-      0 0 40px hsla(264, 69%, 74%, 0.2),
-      0 0 60px hsla(316, 90%, 77%, 0.1);
+      0 0 20px hsla(300, 100%, 50%, 0.3), 
+      0 0 40px hsla(280, 90%, 60%, 0.2),
+      0 0 60px hsla(320, 80%, 55%, 0.1);
   }
   
   .hover-lift {
@@ -159,7 +173,7 @@ All colors MUST be HSL.
     transform: translateY(-8px) scale(1.02);
     box-shadow: 
       0 20px 40px hsla(0, 0%, 0%, 0.15),
-      0 0 30px hsla(200, 98%, 63%, 0.2);
+      0 0 30px hsla(300, 100%, 50%, 0.2);
   }
 }
 
@@ -193,21 +207,36 @@ All colors MUST be HSL.
   }
 }
 
-/* Enhanced Glassmorphism button styles */
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+/* Enhanced Glassmorphism button styles with magenta theme */
 .btn-glass {
   @apply glass hover:bg-white/20 transition-all duration-300;
 }
 
 .btn-glass-primary {
-  @apply bg-gradient-to-r from-cyan-500/20 to-purple-500/20 backdrop-blur-md border border-cyan-500/30 hover:from-cyan-500/30 hover:to-purple-500/30 transition-all duration-300;
+  @apply bg-gradient-to-r from-fuchsia-500/20 to-pink-500/20 backdrop-blur-md border border-fuchsia-500/30 hover:from-fuchsia-500/30 hover:to-pink-500/30 transition-all duration-300;
   box-shadow: 
-    0 4px 15px hsla(200, 98%, 63%, 0.2),
-    0 0 20px hsla(264, 69%, 74%, 0.1);
+    0 4px 15px hsla(300, 100%, 50%, 0.2),
+    0 0 20px hsla(320, 80%, 55%, 0.1);
 }
 
 .btn-glass-primary:hover {
   box-shadow: 
-    0 8px 30px hsla(200, 98%, 63%, 0.3),
-    0 0 40px hsla(264, 69%, 74%, 0.2);
+    0 8px 30px hsla(300, 100%, 50%, 0.3),
+    0 0 40px hsla(320, 80%, 55%, 0.2);
   transform: translateY(-2px);
 }
