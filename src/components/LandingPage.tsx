@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Command, Zap, Shield, BarChart3, Smartphone, ExternalLink } from "lucide-react";
+import { Zap, Shield, BarChart3, Smartphone, ExternalLink, ArrowRight, Sparkles } from "lucide-react";
 import { AuthPage } from "@/components/AuthPage";
 
 export const LandingPage = () => {
@@ -13,23 +13,33 @@ export const LandingPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen animated-bg relative overflow-hidden">
+      {/* Floating background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-10 left-10 w-96 h-96 bg-gradient-to-r from-cyan-400/10 to-blue-500/10 rounded-full blur-3xl floating-animation"></div>
+        <div className="absolute bottom-10 right-10 w-80 h-80 bg-gradient-to-r from-purple-400/10 to-pink-500/10 rounded-full blur-3xl floating-animation" style={{ animationDelay: '-4s' }}></div>
+        <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-gradient-to-r from-emerald-400/10 to-teal-500/10 rounded-full blur-3xl floating-animation" style={{ animationDelay: '-8s' }}></div>
+      </div>
+
       {/* Header */}
-      <header className="border-b border-cyan-500/20 bg-black/20 backdrop-blur-md sticky top-0 z-50">
+      <header className="glass border-b border-white/10 sticky top-0 z-50 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-purple-600 rounded-lg flex items-center justify-center">
-                <Command className="h-4 w-4 text-white" />
+              <div className="w-10 h-10 relative">
+                <img 
+                  src="/lovable-uploads/d260a0ec-5de2-4c2b-bfee-56c85b40e602.png" 
+                  alt="SAWD Logo" 
+                  className="w-full h-full object-contain filter drop-shadow-lg"
+                />
               </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
                 SAWD LINK
               </h1>
             </div>
             <Button
               onClick={() => setShowAuth(true)}
-              variant="outline"
-              className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+              className="btn-glass-primary hover:scale-105 transition-all duration-300"
             >
               Sign In
             </Button>
@@ -38,35 +48,43 @@ export const LandingPage = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 text-center">
-        <div className="max-w-4xl mx-auto">
-          <div className="w-16 h-16 bg-gradient-to-br from-cyan-400 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-8">
-            <Command className="h-8 w-8 text-white" />
+      <section className="container mx-auto px-4 py-20 text-center relative z-10">
+        <div className="max-w-5xl mx-auto">
+          <div className="w-24 h-24 mx-auto mb-8 relative floating-animation">
+            <img 
+              src="/lovable-uploads/d260a0ec-5de2-4c2b-bfee-56c85b40e602.png" 
+              alt="SAWD Logo" 
+              className="w-full h-full object-contain filter drop-shadow-2xl"
+            />
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
+          <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
             Your Digital
-            <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-              {" "}Command Center
+            <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent block mt-2">
+              Command Center
             </span>
           </h1>
 
-          <p className="text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
-            Create stunning bio-link pages with real-time analytics. Share your entire digital presence through one powerful link.
+          <p className="text-xl text-slate-300/90 mb-12 max-w-3xl mx-auto leading-relaxed">
+            Create stunning bio-link pages with real-time analytics. Share your entire digital presence through one powerful link with our glassmorphism-powered interface.
           </p>
 
-          <Card className="bg-black/40 border-slate-700/50 backdrop-blur-md max-w-md mx-auto mb-12">
+          <Card className="glass-card max-w-md mx-auto mb-16 hover-lift glow-effect">
             <CardHeader>
-              <CardTitle className="text-white text-center">
+              <CardTitle className="text-white text-center flex items-center justify-center gap-2">
+                <Sparkles className="h-5 w-5 text-cyan-400" />
                 Launch Your Command Center
               </CardTitle>
             </CardHeader>
             <CardContent>
               <Button
                 onClick={() => setShowAuth(true)}
-                className="w-full bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 transition-all duration-300"
+                className="w-full h-12 btn-glass-primary font-semibold hover:scale-105 transition-all duration-300 group"
               >
-                Get Started Free
+                <span className="flex items-center justify-center gap-2">
+                  Get Started Free
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </span>
               </Button>
               <p className="text-xs text-slate-400 text-center mt-4">
                 No credit card required. Create your page in minutes.
@@ -77,7 +95,7 @@ export const LandingPage = () => {
       </section>
 
       {/* Features Grid */}
-      <section className="container mx-auto px-4 py-20">
+      <section className="container mx-auto px-4 py-20 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <FeatureCard
             icon={<Zap className="h-8 w-8" />}
@@ -105,22 +123,26 @@ export const LandingPage = () => {
             description="Use your own domain for a professional, branded experience."
           />
           <FeatureCard
-            icon={<Command className="h-8 w-8" />}
-            title="Command Center UI"
-            description="Manage everything from one powerful dashboard designed for efficiency."
+            icon={<Sparkles className="h-8 w-8" />}
+            title="Glassmorphism UI"
+            description="Beautiful, modern interface with stunning visual effects and smooth animations."
           />
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-700/50 bg-black/20 backdrop-blur-md">
+      <footer className="glass border-t border-white/10 backdrop-blur-xl relative z-10">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <div className="w-6 h-6 bg-gradient-to-br from-cyan-400 to-purple-600 rounded-lg flex items-center justify-center">
-                <Command className="h-3 w-3 text-white" />
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="w-8 h-8 relative">
+                <img 
+                  src="/lovable-uploads/d260a0ec-5de2-4c2b-bfee-56c85b40e602.png" 
+                  alt="SAWD Logo" 
+                  className="w-full h-full object-contain filter drop-shadow-lg"
+                />
               </div>
-              <span className="text-slate-300 font-medium">SAWD LINK</span>
+              <span className="text-slate-300 font-bold text-lg bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">SAWD LINK</span>
             </div>
             <p className="text-slate-400 text-sm">
               © 2024 SAWD LINK. Built for creators, by creators.
@@ -141,14 +163,14 @@ const FeatureCard = ({
   title: string; 
   description: string; 
 }) => (
-  <Card className="bg-black/40 border-slate-700/50 backdrop-blur-md hover:border-cyan-500/30 transition-all duration-300 group">
+  <Card className="glass-card hover-lift transition-all duration-300 group border-white/10">
     <CardContent className="p-6">
-      <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-lg flex items-center justify-center mb-4 group-hover:from-cyan-500/30 group-hover:to-purple-500/30 transition-all duration-300">
+      <div className="w-14 h-14 glass rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 glow-effect">
         <div className="text-cyan-400 group-hover:text-cyan-300 transition-colors duration-300">
           {icon}
         </div>
       </div>
-      <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+      <h3 className="text-xl font-semibold text-white mb-3">{title}</h3>
       <p className="text-slate-400 text-sm leading-relaxed">{description}</p>
     </CardContent>
   </Card>

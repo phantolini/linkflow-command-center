@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Command, Share2, QrCode } from "lucide-react";
+import { Share2 } from "lucide-react";
 import { LinkCard } from "@/components/LinkCard";
 
 interface Profile {
@@ -126,10 +126,14 @@ export default function PublicProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen animated-bg flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-purple-600 rounded-lg flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <Command className="h-4 w-4 text-white" />
+          <div className="w-12 h-12 mx-auto mb-4 animate-pulse floating-animation">
+            <img 
+              src="/lovable-uploads/d260a0ec-5de2-4c2b-bfee-56c85b40e602.png" 
+              alt="SAWD Logo" 
+              className="w-full h-full object-contain filter drop-shadow-lg"
+            />
           </div>
           <p className="text-slate-300">Loading profile...</p>
         </div>
@@ -139,8 +143,8 @@ export default function PublicProfile() {
 
   if (notFound || !profile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <Card className="bg-black/40 border-slate-700/50 backdrop-blur-md max-w-md mx-auto text-center">
+      <div className="min-h-screen animated-bg flex items-center justify-center">
+        <Card className="glass-card max-w-md mx-auto text-center hover-lift">
           <CardContent className="p-8">
             <h1 className="text-2xl font-bold text-white mb-4">Profile Not Found</h1>
             <p className="text-slate-400 mb-6">
@@ -148,7 +152,7 @@ export default function PublicProfile() {
             </p>
             <Button
               onClick={() => window.location.href = '/'}
-              className="bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500"
+              className="btn-glass-primary hover:scale-105 transition-all duration-300"
             >
               Go Home
             </Button>
@@ -159,20 +163,26 @@ export default function PublicProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div className="container max-w-md mx-auto px-4 py-8">
+    <div className="min-h-screen animated-bg relative overflow-hidden">
+      {/* Floating background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-10 left-10 w-64 h-64 bg-gradient-to-r from-cyan-400/10 to-blue-500/10 rounded-full blur-3xl floating-animation"></div>
+        <div className="absolute bottom-10 right-10 w-72 h-72 bg-gradient-to-r from-purple-400/10 to-pink-500/10 rounded-full blur-3xl floating-animation" style={{ animationDelay: '-3s' }}></div>
+      </div>
+
+      <div className="container max-w-md mx-auto px-4 py-8 relative z-10">
         {/* Profile Header */}
-        <Card className="bg-black/40 border-slate-700/50 backdrop-blur-md mb-6">
+        <Card className="glass-card mb-6 hover-lift glow-effect">
           <CardContent className="p-6 text-center">
-            <div className="relative mb-4">
+            <div className="relative mb-6">
               {profile.avatar_url ? (
                 <img
                   src={profile.avatar_url}
                   alt={profile.display_name}
-                  className="w-20 h-20 rounded-full mx-auto object-cover border-2 border-cyan-500/50"
+                  className="w-24 h-24 rounded-full mx-auto object-cover border-2 border-cyan-500/50 shadow-lg"
                 />
               ) : (
-                <div className="w-20 h-20 bg-gradient-to-br from-cyan-400 to-purple-600 rounded-full flex items-center justify-center mx-auto">
+                <div className="w-24 h-24 bg-gradient-to-br from-cyan-400 to-purple-600 rounded-full flex items-center justify-center mx-auto shadow-lg">
                   <span className="text-2xl font-bold text-white">
                     {profile.display_name.charAt(0).toUpperCase()}
                   </span>
@@ -182,9 +192,9 @@ export default function PublicProfile() {
             <h1 className="text-2xl font-bold text-white mb-2">
               {profile.display_name}
             </h1>
-            <p className="text-cyan-400 text-sm mb-3">@{profile.username}</p>
+            <p className="text-cyan-400 text-sm mb-4 font-medium">@{profile.username}</p>
             {profile.bio && (
-              <p className="text-slate-300 text-sm mb-4 leading-relaxed">
+              <p className="text-slate-300/90 text-sm mb-6 leading-relaxed">
                 {profile.bio}
               </p>
             )}
@@ -192,7 +202,7 @@ export default function PublicProfile() {
               onClick={handleShare}
               variant="outline"
               size="sm"
-              className="border-slate-600 text-slate-300 hover:bg-slate-700/50"
+              className="btn-glass border-white/30 text-slate-300 hover:bg-white/10 hover:scale-105 transition-all duration-300"
             >
               <Share2 className="h-4 w-4 mr-2" />
               Share Profile
@@ -201,20 +211,25 @@ export default function PublicProfile() {
         </Card>
 
         {/* Links */}
-        <div className="space-y-3">
-          {links.map((link) => (
-            <LinkCard
+        <div className="space-y-4">
+          {links.map((link, index) => (
+            <div
               key={link.id}
-              title={link.title}
-              url={link.url}
-              description={link.description || undefined}
-              onClick={() => handleLinkClick(link.id)}
-            />
+              className="hover-lift"
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
+              <LinkCard
+                title={link.title}
+                url={link.url}
+                description={link.description || undefined}
+                onClick={() => handleLinkClick(link.id)}
+              />
+            </div>
           ))}
         </div>
 
         {links.length === 0 && (
-          <Card className="bg-black/40 border-slate-700/50 backdrop-blur-md">
+          <Card className="glass-card hover-lift">
             <CardContent className="p-8 text-center">
               <p className="text-slate-400">
                 No links have been added yet.
@@ -224,9 +239,15 @@ export default function PublicProfile() {
         )}
 
         {/* Footer */}
-        <div className="text-center mt-8 pt-6 border-t border-slate-700/50">
-          <div className="flex items-center justify-center gap-2 text-slate-400 text-sm">
-            <Command className="h-4 w-4" />
+        <div className="text-center mt-12 pt-6 border-t border-white/10">
+          <div className="flex items-center justify-center gap-3 text-slate-400 text-sm">
+            <div className="w-5 h-5 relative">
+              <img 
+                src="/lovable-uploads/d260a0ec-5de2-4c2b-bfee-56c85b40e602.png" 
+                alt="SAWD Logo" 
+                className="w-full h-full object-contain filter drop-shadow-lg opacity-70"
+              />
+            </div>
             <span>Powered by SAWD LINK</span>
           </div>
         </div>
