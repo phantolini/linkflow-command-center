@@ -63,7 +63,7 @@ export const ProfilePreview = ({ profile }: { profile: Profile }) => {
   };
 
   const handleLinkClick = async (link: Link) => {
-    // Track click
+    // Track click - the trigger will automatically populate profile_id
     try {
       await supabase
         .from('link_clicks')

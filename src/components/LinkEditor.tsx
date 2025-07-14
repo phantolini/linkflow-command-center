@@ -385,7 +385,7 @@ const LinkItem = ({
               </div>
             ) : (
               <div className="flex items-center justify-between">
-                <div className="flex-1" onClick={() => setIsEditing(true)} className="cursor-pointer">
+                <div className="flex-1 cursor-pointer" onClick={() => setIsEditing(true)}>
                   <h4 className="font-medium text-white hover:text-cyan-400 transition-colors">
                     {link.title}
                   </h4>
