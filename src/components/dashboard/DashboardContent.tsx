@@ -1,11 +1,10 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LinkEditor } from "../LinkEditor";
-import { ProfilePreview } from "../ProfilePreview";
 import { AnalyticsDashboard } from "../AnalyticsDashboard";
-import { ThemeCustomizer } from "../ThemeCustomizer";
 import { QRCodeGenerator } from "../QRCodeGenerator";
 import { BarChart3, Edit, Eye, Palette, QrCode } from "lucide-react";
+import { PreviewAndCustomize } from "../PreviewAndCustomize";
 
 interface Profile {
   id: string;
@@ -37,15 +36,11 @@ export const DashboardContent = ({ profile, userId, onProfileUpdate }: Dashboard
           </TabsTrigger>
           <TabsTrigger value="customize" className="data-[state=active]:bg-fuchsia-500/20 data-[state=active]:text-white text-white/60">
             <Palette className="h-4 w-4 mr-2 text-fuchsia-400" />
-            Customize
+            Customize & Preview
           </TabsTrigger>
           <TabsTrigger value="qr-code" className="data-[state=active]:bg-fuchsia-500/20 data-[state=active]:text-white text-white/60">
             <QrCode className="h-4 w-4 mr-2 text-fuchsia-400" />
             QR Code
-          </TabsTrigger>
-          <TabsTrigger value="preview" className="data-[state=active]:bg-fuchsia-500/20 data-[state=active]:text-white text-white/60">
-            <Eye className="h-4 w-4 mr-2 text-fuchsia-400" />
-            Preview
           </TabsTrigger>
           <TabsTrigger value="analytics" className="data-[state=active]:bg-fuchsia-500/20 data-[state=active]:text-white text-white/60">
             <BarChart3 className="h-4 w-4 mr-2 text-fuchsia-400" />
@@ -62,25 +57,16 @@ export const DashboardContent = ({ profile, userId, onProfileUpdate }: Dashboard
         </TabsContent>
 
         <TabsContent value="customize">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ThemeCustomizer 
-              profile={profile}
-              onProfileUpdate={onProfileUpdate}
-            />
-            <div className="space-y-6">
-              <QRCodeGenerator profile={profile} />
-            </div>
-          </div>
+          <PreviewAndCustomize 
+            profile={profile}
+            onProfileUpdate={onProfileUpdate}
+          />
         </TabsContent>
 
         <TabsContent value="qr-code">
           <div className="max-w-md mx-auto">
             <QRCodeGenerator profile={profile} />
           </div>
-        </TabsContent>
-
-        <TabsContent value="preview">
-          <ProfilePreview profile={profile} />
         </TabsContent>
 
         <TabsContent value="analytics">
