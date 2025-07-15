@@ -1,13 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { User } from '@supabase/supabase-js';
 import { supabase } from "@/integrations/supabase/client";
-import { LinkEditor } from "./LinkEditor";
-import { ProfilePreview } from "./ProfilePreview";
-import { AnalyticsDashboard } from "./AnalyticsDashboard";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DashboardHeader } from "./dashboard/DashboardHeader";
+import { DashboardContent } from "./dashboard/DashboardContent";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, BarChart3, Edit, Eye } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -87,19 +84,6 @@ export const Dashboard = ({ user }: { user: User }) => {
     }
   };
 
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      window.location.href = '/';
-    } catch (error: any) {
-      toast({
-        title: "Error signing out",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleProfileUpdate = (updatedProfile: Profile) => {
     setProfile(updatedProfile);
   };
@@ -134,66 +118,12 @@ export const Dashboard = ({ user }: { user: User }) => {
       </div>
 
       <div className="relative z-10">
-        {/* Header */}
-        <header className="border-b border-white/10 backdrop-blur-md bg-black/20">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <img 
-                src="/lovable-uploads/69e7d46f-8144-4149-9a8d-cacef5727c53.png" 
-                alt="SAWD LINK" 
-                className="h-8 w-auto"
-              />
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-fuchsia-400 to-pink-500 bg-clip-text text-transparent">SAWD LINK</h1>
-                <p className="text-sm text-white/60">Welcome back, {profile.display_name}</p>
-              </div>
-            </div>
-            <Button
-              onClick={handleSignOut}
-              variant="outline"
-              className="border-white/20 text-white/80 hover:bg-white/10 hover:border-fuchsia-400/30"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </header>
-
-        {/* Main Content */}
-        <div className="container mx-auto px-4 py-8">
-          <Tabs defaultValue="editor" className="space-y-6">
-            <TabsList className="bg-black/40 border border-white/10 backdrop-blur-md">
-              <TabsTrigger value="editor" className="data-[state=active]:bg-fuchsia-500/20 data-[state=active]:text-white text-white/60">
-                <Edit className="h-4 w-4 mr-2 text-fuchsia-400" />
-                Editor
-              </TabsTrigger>
-              <TabsTrigger value="preview" className="data-[state=active]:bg-fuchsia-500/20 data-[state=active]:text-white text-white/60">
-                <Eye className="h-4 w-4 mr-2 text-fuchsia-400" />
-                Preview
-              </TabsTrigger>
-              <TabsTrigger value="analytics" className="data-[state=active]:bg-fuchsia-500/20 data-[state=active]:text-white text-white/60">
-                <BarChart3 className="h-4 w-4 mr-2 text-fuchsia-400" />
-                Analytics
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="editor">
-              <LinkEditor 
-                profile={profile} 
-                onProfileUpdate={handleProfileUpdate}
-                userId={user.id}
-              />
-            </TabsContent>
-
-            <TabsContent value="preview">
-              <ProfilePreview profile={profile} />
-            </TabsContent>
-
-            <TabsContent value="analytics">
-              <AnalyticsDashboard profile={profile} />
-            </TabsContent>
-          </Tabs>
-        </div>
+        <DashboardHeader profile={profile} />
+        <DashboardContent 
+          profile={profile} 
+          userId={user.id}
+          onProfileUpdate={handleProfileUpdate}
+        />
       </div>
     </div>
   );
