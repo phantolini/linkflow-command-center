@@ -96,7 +96,15 @@ export const api = {
     }
   },
 
-  // Analytics (mock)
+  // Analytics
+  async getProfileAnalytics(profileId: string): Promise<{ views: number; clicks: number }> {
+    // Mock analytics data
+    return {
+      views: Math.floor(Math.random() * 1000) + 100,
+      clicks: Math.floor(Math.random() * 500) + 50,
+    };
+  },
+
   async trackProfileView(profileId: string): Promise<void> {
     console.log('Profile view tracked:', profileId);
   },
