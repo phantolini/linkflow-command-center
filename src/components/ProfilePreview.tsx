@@ -1,38 +1,11 @@
-
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, QrCode, Share, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getSocialIcon } from "@/utils/socialIcons";
-
-interface Profile {
-  id: string;
-  user_id: string;
-  username: string;
-  display_name: string;
-  bio: string;
-  avatar_url: string | null;
-  theme: string;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Link {
-  id: string;
-  profile_id: string;
-  title: string;
-  url: string;
-  description: string | null;
-  icon: string | null;
-  position: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { api, Profile, Link } from "@/services/api";
 
 export const ProfilePreview = ({ profile }: { profile: Profile }) => {
   const [links, setLinks] = useState<Link[]>([]);
@@ -45,15 +18,9 @@ export const ProfilePreview = ({ profile }: { profile: Profile }) => {
 
   const loadLinks = async () => {
     try {
-      const { data, error } = await supabase
-        .from('links')
-        .select('*')
-        .eq('profile_id', profile.id)
-        .eq('is_active', true)
-        .order('position', { ascending: true });
-
-      if (error) throw error;
-      setLinks(data || []);
+      const allLinks = await api.getLinks(profile.id);
+      const activeLinks = allLinks.filter(link => link.is_active);
+      setLinks(activeLinks);
     } catch (error: any) {
       toast({
         title: "Error loading links",
@@ -64,15 +31,9 @@ export const ProfilePreview = ({ profile }: { profile: Profile }) => {
   };
 
   const handleLinkClick = async (link: Link) => {
-    // Track click
+    // Track click in your platform's analytics
     try {
-      await supabase
-        .from('link_clicks')
-        .insert({
-          link_id: link.id,
-          profile_id: link.profile_id,
-          clicked_at: new Date().toISOString()
-        });
+      await api.trackLinkClick(link.id, profile.id);
     } catch (error) {
       console.error('Error tracking click:', error);
     }

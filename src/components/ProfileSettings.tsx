@@ -1,28 +1,13 @@
-
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AvatarUpload } from "./AvatarUpload";
-import { Save, Check } from "lucide-react";
-
-interface Profile {
-  id: string;
-  user_id: string;
-  username: string;
-  display_name: string;
-  bio: string;
-  avatar_url: string | null;
-  theme: string;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { Check } from "lucide-react";
+import { api, Profile } from "@/services/api";
 
 interface ProfileSettingsProps {
   profile: Profile;
@@ -54,24 +39,16 @@ export const ProfileSettings = ({ profile, onProfileUpdate, userId }: ProfileSet
   const saveProfile = async () => {
     setIsAutosaving(true);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({
-          username: editingProfile.username,
-          display_name: editingProfile.display_name,
-          bio: editingProfile.bio,
-          avatar_url: editingProfile.avatar_url,
-          theme: editingProfile.theme,
-          is_public: editingProfile.is_public,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', profile.id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const updatedProfile = await api.updateProfile(profile.id, {
+        username: editingProfile.username,
+        display_name: editingProfile.display_name,
+        bio: editingProfile.bio,
+        avatar_url: editingProfile.avatar_url,
+        theme: editingProfile.theme,
+        is_public: editingProfile.is_public,
+      });
       
-      onProfileUpdate(data);
+      onProfileUpdate(updatedProfile);
       setLastSaved(new Date());
     } catch (error: any) {
       toast({

@@ -1,21 +1,9 @@
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { LogOut } from "lucide-react";
-
-interface Profile {
-  id: string;
-  user_id: string;
-  username: string;
-  display_name: string;
-  bio: string;
-  avatar_url: string | null;
-  theme: string;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { Profile } from "@/services/api";
 
 interface DashboardHeaderProps {
   profile: Profile;
@@ -23,34 +11,15 @@ interface DashboardHeaderProps {
 
 export const DashboardHeader = ({ profile }: DashboardHeaderProps) => {
   const { toast } = useToast();
-
-  const cleanupAuthState = () => {
-    Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        localStorage.removeItem(key);
-      }
-    });
-    Object.keys(sessionStorage || {}).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        sessionStorage.removeItem(key);
-      }
-    });
-  };
+  const { logout } = useAuth();
 
   const handleSignOut = async () => {
     try {
-      // Clean up auth state first
-      cleanupAuthState();
-      
-      // Attempt global sign out
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch (err) {
-        // Continue even if this fails
-      }
-      
-      // Force page reload for clean state
-      window.location.href = '/';
+      logout();
+      toast({
+        title: "Signed out successfully",
+        description: "You have been logged out.",
+      });
     } catch (error: any) {
       toast({
         title: "Error signing out",

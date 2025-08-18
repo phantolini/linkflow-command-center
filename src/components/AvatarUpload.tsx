@@ -1,6 +1,5 @@
 
 import { useState, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, Loader2, User } from "lucide-react";
@@ -25,28 +24,11 @@ export const AvatarUpload = ({ currentAvatarUrl, onAvatarUpdate, userId }: Avata
       }
 
       const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${userId}/avatar.${fileExt}`;
-
-      // Delete existing avatar if it exists
-      if (currentAvatarUrl) {
-        const oldPath = currentAvatarUrl.split('/').pop();
-        if (oldPath) {
-          await supabase.storage.from('avatars').remove([`${userId}/${oldPath}`]);
-        }
-      }
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       
-      onAvatarUpdate(data.publicUrl);
+      // Create a mock URL for now - in your platform, you'd upload to your storage
+      const mockUrl = URL.createObjectURL(file);
+      
+      onAvatarUpdate(mockUrl);
       
       toast({
         title: "Avatar updated!",

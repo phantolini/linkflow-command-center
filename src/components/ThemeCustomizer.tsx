@@ -2,24 +2,10 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Palette, Layout, Sparkles } from "lucide-react";
-
-interface Profile {
-  id: string;
-  user_id: string;
-  username: string;
-  display_name: string;
-  bio: string;
-  avatar_url: string | null;
-  theme: string;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { api, Profile } from "@/services/api";
 
 interface ThemeCustomizerProps {
   profile: Profile;
@@ -43,16 +29,11 @@ export const ThemeCustomizer = ({ profile, onProfileUpdate }: ThemeCustomizerPro
   const updateTheme = async (themeId: string) => {
     setIsUpdating(true);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ theme: themeId, updated_at: new Date().toISOString() })
-        .eq('id', profile.id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const updatedProfile = await api.updateProfile(profile.id, {
+        theme: themeId
+      });
       
-      onProfileUpdate(data);
+      onProfileUpdate(updatedProfile);
       setSelectedTheme(themeId);
       
       toast({

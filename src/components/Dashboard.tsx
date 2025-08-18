@@ -1,25 +1,12 @@
 
 import { useState, useEffect } from "react";
-import { User } from '@supabase/supabase-js';
-import { supabase } from "@/integrations/supabase/client";
 import { DashboardHeader } from "./dashboard/DashboardHeader";
 import { DashboardContent } from "./dashboard/DashboardContent";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { api, Profile } from "@/services/api";
 
-interface Profile {
-  id: string;
-  user_id: string;
-  username: string;
-  display_name: string;
-  bio: string;
-  avatar_url: string | null;
-  theme: string;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export const Dashboard = ({ user }: { user: User }) => {
+export const Dashboard = ({ user }: { user: any }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -30,57 +17,30 @@ export const Dashboard = ({ user }: { user: User }) => {
 
   const loadProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // No profile found, create one
-          await createProfile();
-        } else {
-          throw error;
-        }
-      } else {
-        setProfile(data);
-      }
+      const existingProfile = await api.getProfile(user.id);
+      setProfile(existingProfile);
     } catch (error: any) {
-      toast({
-        title: "Error loading profile",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createProfile = async () => {
-    try {
-      const username = user.email?.split('@')[0] || 'user';
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert({
+      // If no profile exists, create one
+      try {
+        const username = user.email?.split('@')[0] || 'user';
+        const newProfile = await api.createProfile({
           user_id: user.id,
           username: username,
-          display_name: user.user_metadata?.full_name || username,
+          display_name: user.display_name || username,
           bio: '',
           theme: 'cyber',
           is_public: false
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      setProfile(data);
-    } catch (error: any) {
-      toast({
-        title: "Error creating profile",
-        description: error.message,
-        variant: "destructive",
-      });
+        });
+        setProfile(newProfile);
+      } catch (createError: any) {
+        toast({
+          title: "Error creating profile",
+          description: createError.message,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
