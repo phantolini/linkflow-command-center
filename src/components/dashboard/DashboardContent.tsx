@@ -62,7 +62,11 @@ export const DashboardContent = ({ profile, userId, onProfileUpdate }: Dashboard
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <TabsContent value="editor" className="mt-0">
-              <LinkEditor profile={profile} />
+              <LinkEditor 
+                profile={profile} 
+                onProfileUpdate={onProfileUpdate}
+                userId={userId}
+              />
             </TabsContent>
 
             <TabsContent value="profile" className="mt-0">
