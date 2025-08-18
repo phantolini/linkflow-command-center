@@ -1,14 +1,18 @@
 
-import React from "react";
-import { LandingPage } from "@/components/LandingPage";
+import React, { useState } from "react";
 import { Dashboard } from "@/components/Dashboard";
-import { useAuth } from "@/hooks/useAuth";
+import { SimpleLandingPage } from "@/components/SimpleLandingPage";
+import { SimpleSetupWizard } from "@/components/SimpleSetupWizard";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 import { Loader2 } from "lucide-react";
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
+  const [showSetup, setShowSetup] = useState(false);
 
-  if (loading) {
+  if (profileLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
@@ -16,7 +20,18 @@ const Index = () => {
     );
   }
 
-  return user ? <Dashboard user={user} /> : <LandingPage />;
+  // No user - show landing page
+  if (!user) {
+    return <SimpleLandingPage onGetStarted={() => setShowSetup(true)} />;
+  }
+
+  // User but no profile - show setup wizard
+  if (!profile) {
+    return <SimpleSetupWizard onComplete={() => setShowSetup(false)} />;
+  }
+
+  // User with profile - show dashboard
+  return <Dashboard user={user} />;
 };
 
 export default Index;
