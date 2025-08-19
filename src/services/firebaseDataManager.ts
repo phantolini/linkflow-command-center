@@ -1,3 +1,4 @@
+
 import { 
   collection, 
   doc, 
@@ -155,7 +156,7 @@ export class FirebaseDataManager {
   // Create document
   async create<T extends Record<string, any>>(collectionName: string, id: string, data: Omit<T, 'id'>): Promise<T> {
     const docData = {
-      ...data,
+      ...data as Record<string, any>,
       created_at: serverTimestamp(),
       updated_at: serverTimestamp()
     };
@@ -168,7 +169,7 @@ export class FirebaseDataManager {
         await setDoc(doc(db, collectionName, id), docData);
       }
       
-      const result = { id, ...docData } as T;
+      const result = { id, ...docData } as unknown as T;
       this.setCache(`${collectionName}:${id}`, result);
       this.invalidateQueryCaches(collectionName);
       this.notifySubscribers(`${collectionName}:${id}`, result);
@@ -183,7 +184,7 @@ export class FirebaseDataManager {
   // Update document
   async update<T extends Record<string, any>>(collectionName: string, id: string, updates: Partial<T>): Promise<T> {
     const updateData = {
-      ...updates,
+      ...(updates as Record<string, any>),
       updated_at: serverTimestamp()
     };
 
@@ -199,10 +200,10 @@ export class FirebaseDataManager {
       const cacheKey = `${collectionName}:${id}`;
       const existing = this.cache.get(cacheKey);
       if (existing) {
-        const updated = { ...existing.data, ...updateData };
+        const updated = { ...existing.data, ...updateData } as T;
         this.setCache(cacheKey, updated);
         this.notifySubscribers(cacheKey, updated);
-        return updated as T;
+        return updated;
       }
 
       // If not in cache, fetch the updated document
