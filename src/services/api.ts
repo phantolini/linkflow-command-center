@@ -24,6 +24,11 @@ export interface Link {
   is_active: boolean;
 }
 
+interface AnalyticsData {
+  views: number;
+  clicks: number;
+}
+
 // Generate unique IDs
 const generateId = () => Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
@@ -54,7 +59,6 @@ export const api = {
     };
 
     await firebaseDataManager.create('profiles', profile.id, profile);
-
     return profile;
   },
 
@@ -109,7 +113,6 @@ export const api = {
       };
 
       await firebaseDataManager.create('links', link.id, link);
-
       return link;
     } catch (error) {
       console.error('Error creating link:', error);
@@ -139,7 +142,7 @@ export const api = {
   // Analytics
   async getProfileAnalytics(profileId: string): Promise<{ views: number; clicks: number }> {
     try {
-      const analytics = await firebaseDataManager.get<{ views: number; clicks: number }>('analytics', profileId);
+      const analytics = await firebaseDataManager.get<AnalyticsData>('analytics', profileId);
       
       return analytics || {
         views: Math.floor(Math.random() * 1000) + 100,
@@ -153,10 +156,10 @@ export const api = {
 
   async trackProfileView(profileId: string): Promise<void> {
     try {
-      const existing = await firebaseDataManager.get('analytics', profileId);
+      const existing = await firebaseDataManager.get<AnalyticsData>('analytics', profileId);
       if (existing) {
         await firebaseDataManager.update('analytics', profileId, { 
-          views: (existing.views || 0) + 1 
+          views: existing.views + 1 
         });
       } else {
         await firebaseDataManager.create('analytics', profileId, {
@@ -173,10 +176,10 @@ export const api = {
   async trackLinkClick(linkId: string, profileId: string): Promise<void> {
     try {
       // Track profile clicks
-      const existingProfile = await firebaseDataManager.get('analytics', profileId);
+      const existingProfile = await firebaseDataManager.get<AnalyticsData>('analytics', profileId);
       if (existingProfile) {
         await firebaseDataManager.update('analytics', profileId, { 
-          clicks: (existingProfile.clicks || 0) + 1 
+          clicks: existingProfile.clicks + 1 
         });
       } else {
         await firebaseDataManager.create('analytics', profileId, {
@@ -186,10 +189,10 @@ export const api = {
       }
 
       // Track individual link clicks
-      const existingLink = await firebaseDataManager.get('link_analytics', linkId);
+      const existingLink = await firebaseDataManager.get<{ clicks: number }>('link_analytics', linkId);
       if (existingLink) {
         await firebaseDataManager.update('link_analytics', linkId, { 
-          clicks: (existingLink.clicks || 0) + 1 
+          clicks: existingLink.clicks + 1 
         });
       } else {
         await firebaseDataManager.create('link_analytics', linkId, {
