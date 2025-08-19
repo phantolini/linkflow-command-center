@@ -4,36 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Palette, Layout, Sparkles, User, ExternalLink } from "lucide-react";
 import { getSocialIcon } from "@/utils/socialIcons";
-
-interface Profile {
-  id: string;
-  user_id: string;
-  username: string;
-  display_name: string;
-  bio: string;
-  avatar_url: string | null;
-  theme: string;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Link {
-  id: string;
-  profile_id: string;
-  title: string;
-  url: string;
-  description: string | null;
-  icon: string | null;
-  position: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { api, Profile, Link } from "@/services/api";
 
 interface PreviewAndCustomizeProps {
   profile: Profile;
@@ -80,15 +54,8 @@ export const PreviewAndCustomize = ({ profile, onProfileUpdate }: PreviewAndCust
 
   const loadLinks = async () => {
     try {
-      const { data, error } = await supabase
-        .from('links')
-        .select('*')
-        .eq('profile_id', profile.id)
-        .eq('is_active', true)
-        .order('position', { ascending: true });
-
-      if (error) throw error;
-      setLinks(data || []);
+      const data = await api.getLinks(profile.id);
+      setLinks(data.filter((link: Link) => link.is_active) || []);
     } catch (error: any) {
       toast({
         title: "Error loading links",
@@ -103,16 +70,12 @@ export const PreviewAndCustomize = ({ profile, onProfileUpdate }: PreviewAndCust
     
     setIsUpdating(true);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ theme: themeId, updated_at: new Date().toISOString() })
-        .eq('id', profile.id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const updatedProfile = await api.updateProfile(profile.id, { 
+        theme: themeId, 
+        updated_at: new Date().toISOString() 
+      });
       
-      onProfileUpdate(data);
+      onProfileUpdate(updatedProfile);
       
       toast({
         title: "Theme updated",
@@ -133,13 +96,7 @@ export const PreviewAndCustomize = ({ profile, onProfileUpdate }: PreviewAndCust
   const handleLinkClick = async (link: Link) => {
     // Track click
     try {
-      await supabase
-        .from('link_clicks')
-        .insert({
-          link_id: link.id,
-          profile_id: link.profile_id,
-          clicked_at: new Date().toISOString()
-        });
+      await api.trackLinkClick(link.id, link.profile_id);
     } catch (error) {
       console.error('Error tracking click:', error);
     }

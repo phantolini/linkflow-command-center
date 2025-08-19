@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,32 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, GripVertical, ExternalLink, Trash2, Save } from "lucide-react";
 import { ProfileSettings } from "./ProfileSettings";
-
-interface Profile {
-  id: string;
-  user_id: string;
-  username: string;
-  display_name: string;
-  bio: string;
-  avatar_url: string | null;
-  theme: string;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Link {
-  id: string;
-  profile_id: string;
-  title: string;
-  url: string;
-  description: string | null;
-  icon: string | null;
-  position: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { api, Profile, Link } from "@/services/api";
 
 export const LinkEditor = ({ 
   profile, 
@@ -53,13 +27,7 @@ export const LinkEditor = ({
 
   const loadLinks = async () => {
     try {
-      const { data, error } = await supabase
-        .from('links')
-        .select('*')
-        .eq('profile_id', profile.id)
-        .order('position', { ascending: true });
-
-      if (error) throw error;
+      const data = await api.getLinks(profile.id);
       setLinks(data || []);
     } catch (error: any) {
       toast({
@@ -74,21 +42,21 @@ export const LinkEditor = ({
     try {
       const newPosition = Math.max(...links.map(l => l.position), 0) + 1;
       
-      const { data, error } = await supabase
-        .from('links')
-        .insert({
-          profile_id: profile.id,
-          title: 'New Link',
-          url: 'https://example.com',
-          description: '',
-          position: newPosition,
-          is_active: true
-        })
-        .select()
-        .single();
+      const data = await api.createLink({
+        profile_id: profile.id,
+        title: 'New Link',
+        url: 'https://example.com',
+        description: '',
+        position: newPosition,
+        is_active: true
+      });
 
-      if (error) throw error;
       setLinks([...links, data]);
+      
+      toast({
+        title: "Link added",
+        description: "New link has been created successfully.",
+      });
     } catch (error: any) {
       toast({
         title: "Error adding link",
@@ -100,18 +68,16 @@ export const LinkEditor = ({
 
   const updateLink = async (linkId: string, updates: Partial<Link>) => {
     try {
-      const { data, error } = await supabase
-        .from('links')
-        .update(updates)
-        .eq('id', linkId)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await api.updateLink(linkId, updates);
       
       setLinks(links.map(link => 
         link.id === linkId ? { ...link, ...data } : link
       ));
+      
+      toast({
+        title: "Link updated",
+        description: "Link has been updated successfully.",
+      });
     } catch (error: any) {
       toast({
         title: "Error updating link",
@@ -123,14 +89,13 @@ export const LinkEditor = ({
 
   const deleteLink = async (linkId: string) => {
     try {
-      const { error } = await supabase
-        .from('links')
-        .delete()
-        .eq('id', linkId);
-
-      if (error) throw error;
-      
+      await api.deleteLink(linkId);
       setLinks(links.filter(link => link.id !== linkId));
+      
+      toast({
+        title: "Link deleted",
+        description: "Link has been removed successfully.",
+      });
     } catch (error: any) {
       toast({
         title: "Error deleting link",
