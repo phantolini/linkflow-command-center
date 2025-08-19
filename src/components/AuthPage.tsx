@@ -9,6 +9,11 @@ export const AuthPage = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
 
+  // Listen for email changes from AuthForm
+  const handleEmailChange = (newEmail: string) => {
+    setEmail(newEmail);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-black relative overflow-hidden">
       {/* Animated fluid blob backgrounds */}
