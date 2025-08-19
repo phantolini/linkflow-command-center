@@ -10,75 +10,164 @@ import {
   query, 
   where, 
   orderBy, 
+  limit, 
   onSnapshot,
-  writeBatch,
   serverTimestamp,
-  Timestamp
+  FieldValue,
+  QueryConstraint,
+  WhereFilterOp
 } from 'firebase/firestore';
 import { db } from './firebase';
 
-interface CachedData<T> {
+// Cache interface
+interface CacheEntry<T = any> {
   data: T;
   timestamp: number;
   ttl: number;
 }
 
-interface QueueItem {
-  operation: 'create' | 'update' | 'delete';
-  collection: string;
-  id: string;
-  data?: any;
-  retries: number;
-  timestamp: number;
+// Query constraint interface
+export interface QueryFilter {
+  field: string;
+  operator: WhereFilterOp;
+  value: any;
 }
 
-export class FirebaseDataManager {
-  private cache = new Map<string, CachedData<any>>();
-  private subscribers = new Map<string, Set<(data: any) => void>>();
-  private syncQueue: QueueItem[] = [];
-  private isOnline = navigator.onLine;
-  private syncInterval?: NodeJS.Timeout;
+// Subscription callback type
+type SubscriptionCallback<T = any> = (data: T) => void;
 
-  constructor() {
-    this.init();
-  }
+class FirebaseDataManager {
+  private cache = new Map<string, CacheEntry>();
+  private subscriptions = new Map<string, SubscriptionCallback[]>();
+  private unsubscribeFunctions = new Map<string, () => void>();
+  
+  // Cache configuration
+  private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
+  private readonly MAX_CACHE_SIZE = 1000;
 
-  private init() {
-    // Listen for online/offline events
-    window.addEventListener('online', () => {
-      this.isOnline = true;
-      this.processSyncQueue();
-    });
-
-    window.addEventListener('offline', () => {
-      this.isOnline = false;
-    });
-
-    // Start periodic sync
-    this.syncInterval = setInterval(() => {
-      if (this.isOnline) {
-        this.processSyncQueue();
+  // Clear expired cache entries
+  private clearExpiredCache(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.cache.entries()) {
+      if (now - entry.timestamp > entry.ttl) {
+        this.cache.delete(key);
       }
-    }, 30000); // Sync every 30 seconds
+    }
+  }
 
-    // Load cached data from localStorage
-    this.loadFromStorage();
+  // Set cache with size limit
+  private setCache<T>(key: string, data: T, ttl: number = this.DEFAULT_TTL): void {
+    // Clear expired entries first
+    this.clearExpiredCache();
+    
+    // If cache is full, remove oldest entries
+    if (this.cache.size >= this.MAX_CACHE_SIZE) {
+      const entries = Array.from(this.cache.entries());
+      entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+      const toRemove = entries.slice(0, Math.floor(this.MAX_CACHE_SIZE * 0.2));
+      toRemove.forEach(([key]) => this.cache.delete(key));
+    }
 
-    // Save to localStorage before page unload
-    window.addEventListener('beforeunload', () => {
-      this.saveToStorage();
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl
     });
   }
 
-  // Get document by ID
-  async get<T>(collectionName: string, id: string, useCache = true): Promise<T | null> {
-    const cacheKey = `${collectionName}:${id}`;
+  // Get from cache
+  private getCache<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    
+    const now = Date.now();
+    if (now - entry.timestamp > entry.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return entry.data as T;
+  }
 
-    // Check cache first if enabled
-    if (useCache && this.cache.has(cacheKey)) {
-      const cached = this.cache.get(cacheKey)!;
-      if (this.isCacheValid(cached)) {
-        return cached.data as T;
+  // Invalidate cache for queries
+  private invalidateQueryCaches(collectionName: string): void {
+    const keysToDelete: string[] = [];
+    for (const key of this.cache.keys()) {
+      if (key.startsWith(`${collectionName}:query:`)) {
+        keysToDelete.push(key);
+      }
+    }
+    keysToDelete.forEach(key => this.cache.delete(key));
+  }
+
+  // Subscription management
+  private notifySubscribers<T>(key: string, data: T): void {
+    const callbacks = this.subscriptions.get(key) || [];
+    callbacks.forEach(callback => {
+      try {
+        callback(data);
+      } catch (error) {
+        console.error('Error in subscription callback:', error);
+      }
+    });
+  }
+
+  // Subscribe to real-time updates
+  subscribe<T>(collectionName: string, id: string, callback: SubscriptionCallback<T>): () => void {
+    const key = `${collectionName}:${id}`;
+    
+    if (!this.subscriptions.has(key)) {
+      this.subscriptions.set(key, []);
+    }
+    
+    this.subscriptions.get(key)!.push(callback);
+    
+    // Set up Firestore listener if not already exists
+    if (!this.unsubscribeFunctions.has(key)) {
+      const docRef = doc(db, collectionName, id);
+      const unsubscribe = onSnapshot(docRef, (doc) => {
+        if (doc.exists()) {
+          const data = { id: doc.id, ...doc.data() } as T;
+          this.setCache(key, data);
+          this.notifySubscribers(key, data);
+        }
+      }, (error) => {
+        console.error('Firestore subscription error:', error);
+      });
+      
+      this.unsubscribeFunctions.set(key, unsubscribe);
+    }
+    
+    // Return unsubscribe function
+    return () => {
+      const callbacks = this.subscriptions.get(key) || [];
+      const index = callbacks.indexOf(callback);
+      if (index > -1) {
+        callbacks.splice(index, 1);
+      }
+      
+      // If no more callbacks, cleanup Firestore listener
+      if (callbacks.length === 0) {
+        const unsubscribe = this.unsubscribeFunctions.get(key);
+        if (unsubscribe) {
+          unsubscribe();
+          this.unsubscribeFunctions.delete(key);
+        }
+        this.subscriptions.delete(key);
+      }
+    };
+  }
+
+  // Get single document
+  async get<T>(collectionName: string, id: string, useCache: boolean = true): Promise<T | null> {
+    const cacheKey = `${collectionName}:${id}`;
+    
+    // Check cache first
+    if (useCache) {
+      const cached = this.getCache<T>(cacheKey);
+      if (cached) {
+        console.log(`Cache hit for ${cacheKey}`);
+        return cached;
       }
     }
 
@@ -91,81 +180,30 @@ export class FirebaseDataManager {
         this.setCache(cacheKey, data);
         return data;
       }
+      
+      return null;
     } catch (error) {
-      console.error('Error getting document:', error);
-      // Return cached data if available
-      if (this.cache.has(cacheKey)) {
-        return this.cache.get(cacheKey)!.data as T;
-      }
-    }
-
-    return null;
-  }
-
-  // Get multiple documents with query
-  async getMany<T>(
-    collectionName: string, 
-    conditions?: { field: string; operator: any; value: any }[],
-    orderField?: string,
-    useCache = true
-  ): Promise<T[]> {
-    const cacheKey = `${collectionName}:query:${JSON.stringify(conditions)}:${orderField}`;
-
-    // Check cache first
-    if (useCache && this.cache.has(cacheKey)) {
-      const cached = this.cache.get(cacheKey)!;
-      if (this.isCacheValid(cached)) {
-        return cached.data as T[];
-      }
-    }
-
-    try {
-      let q = collection(db, collectionName);
-      let queryRef: any = q;
-
-      // Apply conditions
-      if (conditions) {
-        conditions.forEach(condition => {
-          queryRef = query(queryRef, where(condition.field, condition.operator, condition.value));
-        });
-      }
-
-      // Apply ordering
-      if (orderField) {
-        queryRef = query(queryRef, orderBy(orderField));
-      }
-
-      const querySnapshot = await getDocs(queryRef);
-      const data = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as T[];
-
-      this.setCache(cacheKey, data);
-      return data;
-    } catch (error) {
-      console.error('Error getting documents:', error);
-      // Return cached data if available
-      if (this.cache.has(cacheKey)) {
-        return this.cache.get(cacheKey)!.data as T[];
-      }
-      return [];
+      console.error(`Error getting document ${collectionName}/${id}:`, error);
+      throw error;
     }
   }
 
   // Create document
   async create<T extends Record<string, any>>(collectionName: string, id: string, data: Omit<T, 'id'>): Promise<T> {
     const docData = {
-      ...data as Record<string, any>,
+      ...(data as Record<string, any>),
       created_at: serverTimestamp(),
       updated_at: serverTimestamp()
     };
 
-    // Add to sync queue for offline support
-    this.addToSyncQueue('create', collectionName, id, docData);
-
     try {
-      if (this.isOnline) {
+      const docRef = doc(db, collectionName, id);
+      
+      // Check if document already exists
+      const existingDoc = await getDoc(docRef);
+      if (existingDoc.exists()) {
+        throw new Error(`Document ${collectionName}/${id} already exists`);
+      } else {
         await setDoc(doc(db, collectionName, id), docData);
       }
       
@@ -173,10 +211,9 @@ export class FirebaseDataManager {
       this.setCache(`${collectionName}:${id}`, result);
       this.invalidateQueryCaches(collectionName);
       this.notifySubscribers(`${collectionName}:${id}`, result);
-      
       return result;
     } catch (error) {
-      console.error('Error creating document:', error);
+      console.error(`Error creating document ${collectionName}/${id}:`, error);
       throw error;
     }
   }
@@ -188,15 +225,18 @@ export class FirebaseDataManager {
       updated_at: serverTimestamp()
     };
 
-    // Add to sync queue
-    this.addToSyncQueue('update', collectionName, id, updateData);
-
     try {
-      if (this.isOnline) {
-        await updateDoc(doc(db, collectionName, id), updateData);
+      const docRef = doc(db, collectionName, id);
+      
+      // Check if document exists
+      const existingDoc = await getDoc(docRef);
+      if (!existingDoc.exists()) {
+        throw new Error(`Document ${collectionName}/${id} does not exist`);
       }
-
-      // Update cache
+      
+      await updateDoc(docRef, updateData);
+      
+      // Update cache if exists
       const cacheKey = `${collectionName}:${id}`;
       const existing = this.cache.get(cacheKey);
       if (existing) {
@@ -209,297 +249,113 @@ export class FirebaseDataManager {
       // If not in cache, fetch the updated document
       return await this.get<T>(collectionName, id, false) as T;
     } catch (error) {
-      console.error('Error updating document:', error);
+      console.error(`Error updating document ${collectionName}/${id}:`, error);
       throw error;
     }
   }
 
   // Delete document
   async delete(collectionName: string, id: string): Promise<void> {
-    // Add to sync queue
-    this.addToSyncQueue('delete', collectionName, id);
-
     try {
-      if (this.isOnline) {
-        await deleteDoc(doc(db, collectionName, id));
-      }
-
+      const docRef = doc(db, collectionName, id);
+      await deleteDoc(docRef);
+      
       // Remove from cache
       const cacheKey = `${collectionName}:${id}`;
       this.cache.delete(cacheKey);
       this.invalidateQueryCaches(collectionName);
+      
+      // Notify subscribers of deletion
       this.notifySubscribers(cacheKey, null);
+      
+      console.log(`Document ${collectionName}/${id} deleted successfully`);
     } catch (error) {
-      console.error('Error deleting document:', error);
+      console.error(`Error deleting document ${collectionName}/${id}:`, error);
       throw error;
     }
   }
 
-  // Batch operations
-  async batch(operations: Array<{
-    operation: 'create' | 'update' | 'delete';
-    collection: string;
-    id: string;
-    data?: any;
-  }>): Promise<void> {
+  // Get multiple documents with filtering and sorting
+  async getMany<T>(
+    collectionName: string,
+    filters: QueryFilter[] = [],
+    orderByField?: string,
+    orderDirection: 'asc' | 'desc' = 'asc',
+    limitCount?: number,
+    useCache: boolean = true
+  ): Promise<T[]> {
+    // Create cache key based on query parameters
+    const cacheKey = `${collectionName}:query:${JSON.stringify({ filters, orderByField, orderDirection, limitCount })}`;
+    
+    // Check cache first
+    if (useCache) {
+      const cached = this.getCache<T[]>(cacheKey);
+      if (cached) {
+        console.log(`Cache hit for query ${cacheKey}`);
+        return cached;
+      }
+    }
+
     try {
-      if (this.isOnline) {
-        const batch = writeBatch(db);
-        
-        operations.forEach(op => {
-          const docRef = doc(db, op.collection, op.id);
-          
-          switch (op.operation) {
-            case 'create':
-              batch.set(docRef, { 
-                ...op.data, 
-                created_at: serverTimestamp(),
-                updated_at: serverTimestamp()
-              });
-              break;
-            case 'update':
-              batch.update(docRef, { 
-                ...op.data, 
-                updated_at: serverTimestamp()
-              });
-              break;
-            case 'delete':
-              batch.delete(docRef);
-              break;
-          }
-        });
-        
-        await batch.commit();
+      const collectionRef = collection(db, collectionName);
+      const constraints: QueryConstraint[] = [];
+
+      // Add where clauses
+      filters.forEach(filter => {
+        constraints.push(where(filter.field, filter.operator, filter.value));
+      });
+
+      // Add ordering
+      if (orderByField) {
+        constraints.push(orderBy(orderByField, orderDirection));
       }
 
-      // Update caches and queues
-      operations.forEach(op => {
-        this.addToSyncQueue(op.operation, op.collection, op.id, op.data);
-        
-        if (op.operation === 'delete') {
-          this.cache.delete(`${op.collection}:${op.id}`);
-        } else if (op.data) {
-          this.setCache(`${op.collection}:${op.id}`, { id: op.id, ...op.data });
-        }
-        
-        this.invalidateQueryCaches(op.collection);
+      // Add limit
+      if (limitCount) {
+        constraints.push(limit(limitCount));
+      }
+
+      const q = query(collectionRef, ...constraints);
+      const querySnapshot = await getDocs(q);
+      
+      const results: T[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = { id: doc.id, ...doc.data() } as T;
+        results.push(data);
+        // Cache individual documents
+        this.setCache(`${collectionName}:${doc.id}`, data);
       });
+
+      // Cache query results
+      this.setCache(cacheKey, results);
+      return results;
     } catch (error) {
-      console.error('Error in batch operation:', error);
+      console.error(`Error getting documents from ${collectionName}:`, error);
       throw error;
     }
   }
 
-  // Real-time subscription
-  subscribe<T>(
-    collectionName: string, 
-    id: string, 
-    callback: (data: T | null) => void
-  ): () => void {
-    const cacheKey = `${collectionName}:${id}`;
-    
-    // Add to subscribers
-    if (!this.subscribers.has(cacheKey)) {
-      this.subscribers.set(cacheKey, new Set());
-    }
-    this.subscribers.get(cacheKey)!.add(callback);
-
-    // Set up Firestore listener if online
-    let unsubscribe: (() => void) | null = null;
-    
-    if (this.isOnline) {
-      const docRef = doc(db, collectionName, id);
-      unsubscribe = onSnapshot(docRef, (doc) => {
-        if (doc.exists()) {
-          const data = { id: doc.id, ...doc.data() } as T;
-          this.setCache(cacheKey, data);
-          callback(data);
-        } else {
-          this.cache.delete(cacheKey);
-          callback(null);
-        }
-      }, (error) => {
-        console.error('Firestore listener error:', error);
-      });
-    }
-
-    // Return unsubscribe function
-    return () => {
-      const subs = this.subscribers.get(cacheKey);
-      if (subs) {
-        subs.delete(callback);
-        if (subs.size === 0) {
-          this.subscribers.delete(cacheKey);
-        }
-      }
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }
-
-  // Analytics tracking
-  async trackEvent(event: string, properties: Record<string, any> = {}): Promise<void> {
-    const analyticsData = {
-      event,
-      properties,
-      timestamp: serverTimestamp(),
-      session_id: this.getSessionId()
-    };
-
-    try {
-      if (this.isOnline) {
-        const docRef = doc(collection(db, 'analytics'));
-        await setDoc(docRef, analyticsData);
-      } else {
-        // Store in queue for later sync
-        this.addToSyncQueue('create', 'analytics', Date.now().toString(), analyticsData);
-      }
-    } catch (error) {
-      console.error('Error tracking event:', error);
-    }
-  }
-
-  // Private methods
-  private setCache<T>(key: string, data: T, ttl = 60 * 60 * 1000): void {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      ttl
-    });
-  }
-
-  private isCacheValid(cached: CachedData<any>): boolean {
-    return (Date.now() - cached.timestamp) < cached.ttl;
-  }
-
-  private invalidateQueryCaches(collectionName: string): void {
-    const keysToDelete: string[] = [];
-    for (const [key] of this.cache) {
-      if (key.startsWith(`${collectionName}:query:`)) {
-        keysToDelete.push(key);
-      }
-    }
-    keysToDelete.forEach(key => this.cache.delete(key));
-  }
-
-  private addToSyncQueue(
-    operation: 'create' | 'update' | 'delete',
-    collection: string,
-    id: string,
-    data?: any
-  ): void {
-    this.syncQueue.push({
-      operation,
-      collection,
-      id,
-      data,
-      retries: 0,
-      timestamp: Date.now()
-    });
-  }
-
-  private async processSyncQueue(): Promise<void> {
-    if (!this.isOnline || this.syncQueue.length === 0) return;
-
-    const itemsToProcess = [...this.syncQueue];
-    this.syncQueue = [];
-
-    for (const item of itemsToProcess) {
-      try {
-        const docRef = doc(db, item.collection, item.id);
-        
-        switch (item.operation) {
-          case 'create':
-            await setDoc(docRef, item.data);
-            break;
-          case 'update':
-            await updateDoc(docRef, item.data);
-            break;
-          case 'delete':
-            await deleteDoc(docRef);
-            break;
-        }
-      } catch (error) {
-        console.error('Sync error:', error);
-        
-        // Retry up to 3 times
-        if (item.retries < 3) {
-          item.retries++;
-          this.syncQueue.push(item);
-        }
-      }
-    }
-  }
-
-  private notifySubscribers(key: string, data: any): void {
-    const subscribers = this.subscribers.get(key);
-    if (subscribers) {
-      subscribers.forEach(callback => {
-        try {
-          callback(data);
-        } catch (error) {
-          console.error('Subscriber error:', error);
-        }
-      });
-    }
-  }
-
-  private getSessionId(): string {
-    let sessionId = sessionStorage.getItem('session_id');
-    if (!sessionId) {
-      sessionId = Math.random().toString(36).substring(2);
-      sessionStorage.setItem('session_id', sessionId);
-    }
-    return sessionId;
-  }
-
-  private saveToStorage(): void {
-    try {
-      const cacheData: Record<string, any> = {};
-      for (const [key, value] of this.cache) {
-        if (this.isCacheValid(value)) {
-          cacheData[key] = value;
-        }
-      }
-      
-      localStorage.setItem('firebase_cache', JSON.stringify(cacheData));
-      localStorage.setItem('firebase_sync_queue', JSON.stringify(this.syncQueue));
-    } catch (error) {
-      console.error('Error saving to localStorage:', error);
-    }
-  }
-
-  private loadFromStorage(): void {
-    try {
-      const cacheData = localStorage.getItem('firebase_cache');
-      const queueData = localStorage.getItem('firebase_sync_queue');
-      
-      if (cacheData) {
-        const parsed = JSON.parse(cacheData);
-        for (const [key, value] of Object.entries(parsed)) {
-          if (this.isCacheValid(value as CachedData<any>)) {
-            this.cache.set(key, value as CachedData<any>);
-          }
-        }
-      }
-      
-      if (queueData) {
-        this.syncQueue = JSON.parse(queueData);
-      }
-    } catch (error) {
-      console.error('Error loading from localStorage:', error);
-    }
-  }
-
-  // Cleanup method
-  destroy(): void {
-    if (this.syncInterval) {
-      clearInterval(this.syncInterval);
-    }
+  // Clear all cache
+  clearCache(): void {
     this.cache.clear();
-    this.subscribers.clear();
-    this.syncQueue = [];
+    console.log('Cache cleared');
+  }
+
+  // Get cache statistics
+  getCacheStats(): { size: number; keys: string[] } {
+    return {
+      size: this.cache.size,
+      keys: Array.from(this.cache.keys())
+    };
+  }
+
+  // Cleanup all subscriptions
+  cleanup(): void {
+    // Unsubscribe from all Firestore listeners
+    this.unsubscribeFunctions.forEach(unsubscribe => unsubscribe());
+    this.unsubscribeFunctions.clear();
+    this.subscriptions.clear();
+    this.clearCache();
   }
 }
 
