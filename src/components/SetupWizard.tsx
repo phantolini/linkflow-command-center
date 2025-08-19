@@ -162,8 +162,9 @@ export const SetupWizard = ({ user, onComplete }: SetupWizardProps) => {
               <div className="space-y-6">
                 <div className="text-center">
                   <AvatarUpload
-                    currentAvatar={profile.avatar_url}
-                    onUpload={(url) => updateProfile('avatar_url', url)}
+                    currentAvatarUrl={profile.avatar_url}
+                    onAvatarUpdate={(url) => updateProfile('avatar_url', url)}
+                    userId={user.uid}
                   />
                 </div>
 

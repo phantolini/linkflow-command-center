@@ -156,7 +156,7 @@ export class FirebaseDataManager {
   // Create document
   async create<T>(collectionName: string, id: string, data: Omit<T, 'id'>): Promise<T> {
     const docData = {
-      ...data,
+      ...data as any,
       created_at: serverTimestamp(),
       updated_at: serverTimestamp()
     };
@@ -184,7 +184,7 @@ export class FirebaseDataManager {
   // Update document
   async update<T>(collectionName: string, id: string, updates: Partial<T>): Promise<T> {
     const updateData = {
-      ...updates,
+      ...updates as any,
       updated_at: serverTimestamp()
     };
 

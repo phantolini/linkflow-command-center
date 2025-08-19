@@ -31,9 +31,7 @@ export const api = {
   // Profile operations
   async getProfile(userId: string): Promise<Profile | null> {
     try {
-      const profile = await firebaseDataManager.get(`profile:${userId}`, {
-        appContext: 'linkbuilder'
-      });
+      const profile = await firebaseDataManager.get<Profile>('profiles', userId);
       return profile;
     } catch (error) {
       console.error('Error getting profile:', error);
@@ -55,52 +53,14 @@ export const api = {
       updated_at: new Date().toISOString(),
     };
 
-    await firebaseDataManager.set(`profile:${profile.user_id}`, profile, {
-      appContext: 'linkbuilder',
-      syncImmediately: true
-    });
-
-    // Also store in profiles collection for public access
-    await firebaseDataManager.set(`profiles:${profile.id}`, profile, {
-      appContext: 'linkbuilder',
-      syncImmediately: true
-    });
+    await firebaseDataManager.create('profiles', profile.id, profile);
 
     return profile;
   },
 
   async updateProfile(id: string, data: Partial<Profile>): Promise<Profile> {
     try {
-      // Get current profile first
-      const profiles = await firebaseDataManager.query('profiles', [], {
-        appContext: 'linkbuilder'
-      });
-      
-      const profile = profiles.find((p: Profile) => p.id === id);
-      if (!profile) throw new Error('Profile not found');
-      
-      const updatedProfile = { 
-        ...profile, 
-        ...data, 
-        updated_at: new Date().toISOString() 
-      };
-      
-      // Update both individual profile and profiles collection
-      await firebaseDataManager.batchWrite([
-        {
-          type: 'set',
-          key: `profile:${updatedProfile.user_id}`,
-          data: updatedProfile,
-          appContext: 'linkbuilder'
-        },
-        {
-          type: 'set',
-          key: `profiles:${updatedProfile.id}`,
-          data: updatedProfile,
-          appContext: 'linkbuilder'
-        }
-      ]);
-
+      const updatedProfile = await firebaseDataManager.update<Profile>('profiles', id, data);
       return updatedProfile;
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -110,12 +70,10 @@ export const api = {
 
   async getPublicProfile(username: string): Promise<Profile | null> {
     try {
-      const profiles = await firebaseDataManager.query('profiles', [
-        ['username', '==', username],
-        ['is_public', '==', true]
-      ], {
-        appContext: 'linkbuilder'
-      });
+      const profiles = await firebaseDataManager.getMany<Profile>('profiles', [
+        { field: 'username', operator: '==', value: username },
+        { field: 'is_public', operator: '==', value: true }
+      ]);
       
       return profiles[0] || null;
     } catch (error) {
@@ -127,13 +85,9 @@ export const api = {
   // Link operations
   async getLinks(profileId: string): Promise<Link[]> {
     try {
-      const links = await firebaseDataManager.query('links', [
-        ['profile_id', '==', profileId]
-      ], {
-        orderByField: 'position',
-        orderDirection: 'asc',
-        appContext: 'linkbuilder'
-      });
+      const links = await firebaseDataManager.getMany<Link>('links', [
+        { field: 'profile_id', operator: '==', value: profileId }
+      ], 'position');
       
       return links;
     } catch (error) {
@@ -154,10 +108,7 @@ export const api = {
         is_active: data.is_active !== false,
       };
 
-      await firebaseDataManager.set(`links:${link.id}`, link, {
-        appContext: 'linkbuilder',
-        syncImmediately: true
-      });
+      await firebaseDataManager.create('links', link.id, link);
 
       return link;
     } catch (error) {
@@ -168,19 +119,7 @@ export const api = {
 
   async updateLink(id: string, data: Partial<Link>): Promise<Link> {
     try {
-      // Get current link
-      const currentLink = await firebaseDataManager.get(`links:${id}`, {
-        appContext: 'linkbuilder'
-      });
-      
-      if (!currentLink) throw new Error('Link not found');
-
-      const updatedLink = { ...currentLink, ...data };
-      
-      await firebaseDataManager.update(`links:${id}`, updatedLink, {
-        appContext: 'linkbuilder'
-      });
-
+      const updatedLink = await firebaseDataManager.update<Link>('links', id, data);
       return updatedLink;
     } catch (error) {
       console.error('Error updating link:', error);
@@ -190,9 +129,7 @@ export const api = {
 
   async deleteLink(id: string): Promise<void> {
     try {
-      await firebaseDataManager.delete(`links:${id}`, {
-        appContext: 'linkbuilder'
-      });
+      await firebaseDataManager.delete('links', id);
     } catch (error) {
       console.error('Error deleting link:', error);
       throw error;
@@ -202,10 +139,7 @@ export const api = {
   // Analytics
   async getProfileAnalytics(profileId: string): Promise<{ views: number; clicks: number }> {
     try {
-      const analytics = await firebaseDataManager.get(`analytics:${profileId}`, {
-        appContext: 'linkbuilder',
-        fallbackToCache: true
-      });
+      const analytics = await firebaseDataManager.get<{ views: number; clicks: number }>('analytics', profileId);
       
       return analytics || {
         views: Math.floor(Math.random() * 1000) + 100,
@@ -219,7 +153,17 @@ export const api = {
 
   async trackProfileView(profileId: string): Promise<void> {
     try {
-      await firebaseDataManager.incrementAnalytics(profileId, 'views', 1, 'linkbuilder');
+      const existing = await firebaseDataManager.get('analytics', profileId);
+      if (existing) {
+        await firebaseDataManager.update('analytics', profileId, { 
+          views: (existing.views || 0) + 1 
+        });
+      } else {
+        await firebaseDataManager.create('analytics', profileId, {
+          views: 1,
+          clicks: 0
+        });
+      }
       console.log('Profile view tracked:', profileId);
     } catch (error) {
       console.error('Error tracking profile view:', error);
@@ -228,19 +172,30 @@ export const api = {
 
   async trackLinkClick(linkId: string, profileId: string): Promise<void> {
     try {
-      // Track both profile clicks and individual link clicks
-      await firebaseDataManager.batchWrite([
-        {
-          type: 'update',
-          key: `analytics:${profileId}`,
-          data: { clicks: 1 }
-        },
-        {
-          type: 'update', 
-          key: `link_analytics:${linkId}`,
-          data: { clicks: 1 }
-        }
-      ]);
+      // Track profile clicks
+      const existingProfile = await firebaseDataManager.get('analytics', profileId);
+      if (existingProfile) {
+        await firebaseDataManager.update('analytics', profileId, { 
+          clicks: (existingProfile.clicks || 0) + 1 
+        });
+      } else {
+        await firebaseDataManager.create('analytics', profileId, {
+          views: 0,
+          clicks: 1
+        });
+      }
+
+      // Track individual link clicks
+      const existingLink = await firebaseDataManager.get('link_analytics', linkId);
+      if (existingLink) {
+        await firebaseDataManager.update('link_analytics', linkId, { 
+          clicks: (existingLink.clicks || 0) + 1 
+        });
+      } else {
+        await firebaseDataManager.create('link_analytics', linkId, {
+          clicks: 1
+        });
+      }
       
       console.log('Link click tracked:', linkId, profileId);
     } catch (error) {
