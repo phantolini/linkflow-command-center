@@ -1,4 +1,4 @@
-import { dataSyncManager } from './dataSyncManager';
+import { firebaseDataManager } from './firebaseDataManager';
 
 // Keep existing interfaces
 export interface Profile {
@@ -31,7 +31,7 @@ export const api = {
   // Profile operations
   async getProfile(userId: string): Promise<Profile | null> {
     try {
-      const profile = await dataSyncManager.get(`profile:${userId}`, {
+      const profile = await firebaseDataManager.get(`profile:${userId}`, {
         appContext: 'linkbuilder'
       });
       return profile;
@@ -55,7 +55,13 @@ export const api = {
       updated_at: new Date().toISOString(),
     };
 
-    await dataSyncManager.set(`profile:${profile.user_id}`, profile, {
+    await firebaseDataManager.set(`profile:${profile.user_id}`, profile, {
+      appContext: 'linkbuilder',
+      syncImmediately: true
+    });
+
+    // Also store in profiles collection for public access
+    await firebaseDataManager.set(`profiles:${profile.id}`, profile, {
       appContext: 'linkbuilder',
       syncImmediately: true
     });
@@ -66,32 +72,34 @@ export const api = {
   async updateProfile(id: string, data: Partial<Profile>): Promise<Profile> {
     try {
       // Get current profile first
-      const profiles = await dataSyncManager.get('profiles', {
-        appContext: 'linkbuilder',
-        fallbackToCache: true
-      }) || [];
+      const profiles = await firebaseDataManager.query('profiles', [], {
+        appContext: 'linkbuilder'
+      });
       
-      const profileIndex = profiles.findIndex((p: Profile) => p.id === id);
-      if (profileIndex === -1) throw new Error('Profile not found');
+      const profile = profiles.find((p: Profile) => p.id === id);
+      if (!profile) throw new Error('Profile not found');
       
       const updatedProfile = { 
-        ...profiles[profileIndex], 
+        ...profile, 
         ...data, 
         updated_at: new Date().toISOString() 
       };
       
-      // Update in profiles array
-      profiles[profileIndex] = updatedProfile;
-      await dataSyncManager.set('profiles', profiles, {
-        appContext: 'linkbuilder',
-        syncImmediately: true
-      });
-
-      // Also update the individual profile key
-      await dataSyncManager.set(`profile:${updatedProfile.user_id}`, updatedProfile, {
-        appContext: 'linkbuilder',
-        syncImmediately: true
-      });
+      // Update both individual profile and profiles collection
+      await firebaseDataManager.batchWrite([
+        {
+          type: 'set',
+          key: `profile:${updatedProfile.user_id}`,
+          data: updatedProfile,
+          appContext: 'linkbuilder'
+        },
+        {
+          type: 'set',
+          key: `profiles:${updatedProfile.id}`,
+          data: updatedProfile,
+          appContext: 'linkbuilder'
+        }
+      ]);
 
       return updatedProfile;
     } catch (error) {
@@ -102,13 +110,14 @@ export const api = {
 
   async getPublicProfile(username: string): Promise<Profile | null> {
     try {
-      const profiles = await dataSyncManager.get('profiles', {
-        appContext: 'linkbuilder',
-        fallbackToCache: true
-      }) || [];
+      const profiles = await firebaseDataManager.query('profiles', [
+        ['username', '==', username],
+        ['is_public', '==', true]
+      ], {
+        appContext: 'linkbuilder'
+      });
       
-      const profile = profiles.find((p: Profile) => p.username === username && p.is_public);
-      return profile || null;
+      return profiles[0] || null;
     } catch (error) {
       console.error('Error getting public profile:', error);
       return null;
@@ -118,12 +127,15 @@ export const api = {
   // Link operations
   async getLinks(profileId: string): Promise<Link[]> {
     try {
-      const links = await dataSyncManager.get(`links:${profileId}`, {
-        appContext: 'linkbuilder',
-        fallbackToCache: true
-      }) || [];
+      const links = await firebaseDataManager.query('links', [
+        ['profile_id', '==', profileId]
+      ], {
+        orderByField: 'position',
+        orderDirection: 'asc',
+        appContext: 'linkbuilder'
+      });
       
-      return links.sort((a: Link, b: Link) => a.position - b.position);
+      return links;
     } catch (error) {
       console.error('Error getting links:', error);
       return [];
@@ -142,11 +154,7 @@ export const api = {
         is_active: data.is_active !== false,
       };
 
-      // Get existing links
-      const existingLinks = await this.getLinks(link.profile_id);
-      const updatedLinks = [...existingLinks, link];
-
-      await dataSyncManager.set(`links:${link.profile_id}`, updatedLinks, {
+      await firebaseDataManager.set(`links:${link.id}`, link, {
         appContext: 'linkbuilder',
         syncImmediately: true
       });
@@ -160,41 +168,17 @@ export const api = {
 
   async updateLink(id: string, data: Partial<Link>): Promise<Link> {
     try {
-      // Find which profile this link belongs to
-      let targetProfileId = '';
-      let links: Link[] = [];
+      // Get current link
+      const currentLink = await firebaseDataManager.get(`links:${id}`, {
+        appContext: 'linkbuilder'
+      });
       
-      // If we have profile_id in the update data, use it
-      if (data.profile_id) {
-        targetProfileId = data.profile_id;
-        links = await this.getLinks(targetProfileId);
-      } else {
-        // Search through profiles to find this link
-        const profiles = await dataSyncManager.get('profiles', {
-          appContext: 'linkbuilder',
-          fallbackToCache: true
-        }) || [];
-        
-        for (const profile of profiles) {
-          const profileLinks = await this.getLinks(profile.id);
-          const found = profileLinks.find(l => l.id === id);
-          if (found) {
-            targetProfileId = profile.id;
-            links = profileLinks;
-            break;
-          }
-        }
-      }
+      if (!currentLink) throw new Error('Link not found');
 
-      const linkIndex = links.findIndex(l => l.id === id);
-      if (linkIndex === -1) throw new Error('Link not found');
-
-      const updatedLink = { ...links[linkIndex], ...data };
-      links[linkIndex] = updatedLink;
-
-      await dataSyncManager.set(`links:${targetProfileId}`, links, {
-        appContext: 'linkbuilder',
-        syncImmediately: true
+      const updatedLink = { ...currentLink, ...data };
+      
+      await firebaseDataManager.update(`links:${id}`, updatedLink, {
+        appContext: 'linkbuilder'
       });
 
       return updatedLink;
@@ -206,25 +190,9 @@ export const api = {
 
   async deleteLink(id: string): Promise<void> {
     try {
-      // Search through profiles to find this link
-      const profiles = await dataSyncManager.get('profiles', {
-        appContext: 'linkbuilder',
-        fallbackToCache: true
-      }) || [];
-      
-      for (const profile of profiles) {
-        const links = await this.getLinks(profile.id);
-        const linkIndex = links.findIndex(l => l.id === id);
-        
-        if (linkIndex !== -1) {
-          links.splice(linkIndex, 1);
-          await dataSyncManager.set(`links:${profile.id}`, links, {
-            appContext: 'linkbuilder',
-            syncImmediately: true
-          });
-          return;
-        }
-      }
+      await firebaseDataManager.delete(`links:${id}`, {
+        appContext: 'linkbuilder'
+      });
     } catch (error) {
       console.error('Error deleting link:', error);
       throw error;
@@ -234,7 +202,7 @@ export const api = {
   // Analytics
   async getProfileAnalytics(profileId: string): Promise<{ views: number; clicks: number }> {
     try {
-      const analytics = await dataSyncManager.get(`analytics:${profileId}`, {
+      const analytics = await firebaseDataManager.get(`analytics:${profileId}`, {
         appContext: 'linkbuilder',
         fallbackToCache: true
       });
@@ -251,14 +219,7 @@ export const api = {
 
   async trackProfileView(profileId: string): Promise<void> {
     try {
-      const analytics = await this.getProfileAnalytics(profileId);
-      analytics.views += 1;
-      
-      await dataSyncManager.set(`analytics:${profileId}`, analytics, {
-        appContext: 'linkbuilder',
-        syncImmediately: false // Don't sync immediately for analytics
-      });
-      
+      await firebaseDataManager.incrementAnalytics(profileId, 'views', 1, 'linkbuilder');
       console.log('Profile view tracked:', profileId);
     } catch (error) {
       console.error('Error tracking profile view:', error);
@@ -267,26 +228,19 @@ export const api = {
 
   async trackLinkClick(linkId: string, profileId: string): Promise<void> {
     try {
-      const analytics = await this.getProfileAnalytics(profileId);
-      analytics.clicks += 1;
-      
-      await dataSyncManager.set(`analytics:${profileId}`, analytics, {
-        appContext: 'linkbuilder',
-        syncImmediately: false
-      });
-      
-      // Also track individual link clicks
-      const linkAnalytics = await dataSyncManager.get(`link_analytics:${linkId}`, {
-        appContext: 'linkbuilder',
-        fallbackToCache: true
-      }) || { clicks: 0 };
-      
-      linkAnalytics.clicks += 1;
-      
-      await dataSyncManager.set(`link_analytics:${linkId}`, linkAnalytics, {
-        appContext: 'linkbuilder',
-        syncImmediately: false
-      });
+      // Track both profile clicks and individual link clicks
+      await firebaseDataManager.batchWrite([
+        {
+          type: 'update',
+          key: `analytics:${profileId}`,
+          data: { clicks: 1 }
+        },
+        {
+          type: 'update', 
+          key: `link_analytics:${linkId}`,
+          data: { clicks: 1 }
+        }
+      ]);
       
       console.log('Link click tracked:', linkId, profileId);
     } catch (error) {

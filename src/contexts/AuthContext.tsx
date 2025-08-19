@@ -1,5 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { auth } from '@/services/firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 export interface User {
   id: string;
@@ -45,9 +47,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
     onAuthStateChange?.(newUser);
   };
 
-  const logout = () => {
-    handleSetUser(null);
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      handleSetUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      handleSetUser(null);
+    }
   };
+
+  // Listen for Firebase auth changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        const user: User = {
+          id: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          display_name: firebaseUser.displayName || undefined,
+          avatar_url: firebaseUser.photoURL || undefined,
+        };
+        handleSetUser(user);
+      } else {
+        handleSetUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Listen for auth changes from parent platform
   useEffect(() => {

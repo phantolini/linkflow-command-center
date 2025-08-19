@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,8 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { User, Upload, Link as LinkIcon, Eye, Share } from "lucide-react";
+import { User, Upload, Link as LinkIcon, Eye } from "lucide-react";
+import { useProfile } from "@/hooks/useProfile";
 
 interface Profile {
   id: string;
@@ -36,6 +35,7 @@ export const SetupWizard = ({ profile, onComplete }: SetupWizardProps) => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatar_url);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { updateProfile } = useProfile();
 
   const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
@@ -65,25 +65,17 @@ export const SetupWizard = ({ profile, onComplete }: SetupWizardProps) => {
     if (!avatarFile) return null;
 
     try {
-      const fileExt = avatarFile.name.split('.').pop();
-      const fileName = `${profile.id}/avatar.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, avatarFile, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      return data.publicUrl;
+      // Convert file to base64 for storage in DataSyncManager
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(avatarFile);
+      });
     } catch (error: any) {
-      console.error('Error uploading avatar:', error);
+      console.error('Error processing avatar:', error);
       toast({
         title: "Upload failed",
-        description: "Failed to upload profile picture",
+        description: "Failed to process profile picture",
         variant: "destructive",
       });
       return null;
@@ -104,28 +96,28 @@ export const SetupWizard = ({ profile, onComplete }: SetupWizardProps) => {
           avatarUrl = await uploadAvatar();
         }
 
-        const { data, error } = await supabase
-          .from('profiles')
-          .update({
-            display_name: formData.display_name,
-            bio: formData.bio,
-            username: formData.username,
-            avatar_url: avatarUrl,
-            is_public: true,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', profile.id)
-          .select()
-          .single();
-
-        if (error) throw error;
+        await updateProfile({
+          display_name: formData.display_name,
+          bio: formData.bio,
+          username: formData.username,
+          avatar_url: avatarUrl,
+          is_public: true,
+        });
 
         toast({
           title: "Profile published! 🎉",
           description: `Your profile is now live at /${formData.username}`,
         });
 
-        onComplete(data);
+        onComplete({
+          ...profile,
+          display_name: formData.display_name,
+          bio: formData.bio,
+          username: formData.username,
+          avatar_url: avatarUrl,
+          is_public: true,
+          updated_at: new Date().toISOString()
+        });
       }
     } catch (error: any) {
       toast({
