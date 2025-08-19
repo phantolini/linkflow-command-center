@@ -1,4 +1,3 @@
-
 import { 
   collection, 
   doc, 
@@ -154,9 +153,9 @@ export class FirebaseDataManager {
   }
 
   // Create document
-  async create<T>(collectionName: string, id: string, data: Omit<T, 'id'>): Promise<T> {
+  async create<T extends Record<string, any>>(collectionName: string, id: string, data: Omit<T, 'id'>): Promise<T> {
     const docData = {
-      ...(data && typeof data === 'object' ? data : {}),
+      ...data,
       created_at: serverTimestamp(),
       updated_at: serverTimestamp()
     };
@@ -182,9 +181,9 @@ export class FirebaseDataManager {
   }
 
   // Update document
-  async update<T>(collectionName: string, id: string, updates: Partial<T>): Promise<T> {
+  async update<T extends Record<string, any>>(collectionName: string, id: string, updates: Partial<T>): Promise<T> {
     const updateData = {
-      ...(updates && typeof updates === 'object' ? updates : {}),
+      ...updates,
       updated_at: serverTimestamp()
     };
 
